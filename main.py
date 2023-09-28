@@ -168,7 +168,7 @@ def absorption_time(G: nx.Graph):
         b[idx] = 1
 
   t = np.linalg.solve(A, b)
-  return (round(Decimal.from_float(t[-1]), 3), cheegers_constant(G)) #, Fraction.from_float(t[-1]).limit_denominator(10**9))
+  return (round(Decimal.from_float(t[-1]), 3),) #, Fraction.from_float(t[-1]).limit_denominator(10**9))
 
 import itertools
 
@@ -192,27 +192,34 @@ def cheegers_constant(G: nx.Graph):
           
   return min_ratio
 
-def main(args):
-  N = args.n
-  xs, ys = [], []
-  for G in yield_all_graph6(Path(f"data/connected-n{N}.g6")):
-    samples = list(sample(lambda: trial_absorption_time(G), times=1000))
-    mean = np.mean(samples)
-    xs.append(cheegers_constant(G))
-    ys.append(mean)
-    std = np.std(samples)
-    print(f"{mean} +/- {std} steps {'*' if len(G.edges()) == N*(N-1)//2 else ''} {cheegers_constant(G)}")
-    nx.draw(G)
-    plt.show()
-    # at = absorption_time(G)
-    # fmt_at = tuple(map(str, at)) 
-    # print(fmt_at)
 
-  plt.scatter(xs, ys)
-  plt.show()
+def samples_info(G: nx.Graph):
+  N = len(G)
+  samples = list(sample(lambda: trial_absorption_time(G), times=1000))
+  mean = np.mean(samples)
+  std = np.std(samples)
+  print(f"{mean} +/- {std} steps {'*' if len(G.edges()) == N*(N-1)//2 else ''} {nx.edge_connectivity(G)}")
+
+def get_exact(G: nx.Graph):
+  N = len(G)
+  is_complete = len(G.edges()) == N*(N-1)//2
+  at = absorption_time(G)[0]
+  print(f"{at} {'<-- complete' if is_complete else ''}")
+
+def main(args):
+  DRAW_GRAPH = False
+  N = args.n
+  for G in yield_all_graph6(Path(f"data/connected-n{N}.g6")):
+    if DRAW_GRAPH:
+      nx.draw(G)
+      plt.show()
+
+    # get_samples(G)
+    get_exact(G)
+
 
 def parse_args():
-  parser = argparse.ArgumentParser()
+  parser = argparse.ArgumentParser(description="compute expected number of steps until absorption in multi-type Moran process on an undirected graph.")
   parser.add_argument('-n', type=int, required=True)
   return parser.parse_args()
 
