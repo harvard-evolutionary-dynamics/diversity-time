@@ -10,6 +10,10 @@ import seaborn as sns
 
 from pathlib import Path
 
+plt.rcParams.update({
+  "text.usetex": True,
+  "font.family": "Helvetica"
+})
 
 def walk(n):
   partition = [1] * n
@@ -44,131 +48,14 @@ def partition_walking(args):
 
 
 
-def yield_all_graph6(path: Path):
-  with path.open(mode="rb") as f:
-    for line in f.readlines():
-      line = line.strip()
-      if not len(line):
-        continue
-      yield nx.from_graph6_bytes(line)
 
 
-def trial_absorption_time(G: nx.Graph):
-  # Map of type -> locations.
-  S = {idx: {u} for idx, u in enumerate(G.nodes())}
-  S_rev = {v: k
-    for k, vs in S.items()
-    for v in vs
-  }
-  N = len(G)
-  V = G.nodes()
-  steps = 0
 
-  while len(S) > 1:
-    population_with_weights = [(type_, len(locations)) for type_, locations in S.items()]
-    birther_type_ = random.choices(
-      population=[type_ for type_, _ in population_with_weights],
-      weights=[type_size for _, type_size in population_with_weights],
-    )[0]
-    birther = random.choice(list(S[birther_type_]))
 
-    dier = random.choice([w for (_, w) in G.edges(birther)])
-    dier_type = S_rev[dier]
 
-    # Our graphs should not have self loops.
-    assert birther != dier
-    if birther_type_ != dier_type:
-      S[birther_type_].add(dier)
-      S[dier_type].remove(dier)
-      if not S[dier_type]:
-        S.pop(dier_type)
-      S_rev[dier] = birther_type_
-    
-    steps += 1
-  return steps
 
-def sample(fn, times):
-  count = 0
-  while count < times:
-    if (ans := fn()) is not None:
-      yield ans
-      count += 1
 
-def partitions(collection):
-  """Source: https://stackoverflow.com/questions/19368375/set-partitions-in-python"""
-  if len(collection) == 1:
-    yield (collection,)
-    return
 
-  first = collection[0]
-  for smaller in partitions(collection[1:]):
-    # Insert `first` in each of the subpartition's subsets.
-    for n, subset in enumerate(smaller):
-      yield smaller[:n] + (((first,) + subset),) + smaller[n+1:]
-    # Put `first` in its own subset.
-    yield ((first,),) + smaller
-
-def rec_sort(xs):
-  """Helper method to sort partitions."""
-  if type(xs) is not list and type(xs) is not tuple:
-    # We don't want to sort strings.
-    return xs
-
-  new_xs = []
-  for x in xs:
-    new_xs.append(rec_sort(x))
-  new_xs.sort()
-  return tuple(new_xs)
-
-import scipy.special as sp
-def number_of_partitions(n):
-  if n == 0: return 1
-  return sum(
-    int(sp.comb(n-1, k)) * number_of_partitions(k)
-    for k in range(n)
-  )
-
-import copy
-def birth_event(S, u, v):
-  assert u != v
-  uloc = None
-  vloc = None
-  for loc, group in enumerate(S):
-    if uloc is not None and vloc is not None:
-      break
-    if u in group:
-      uloc = loc
-    if v in group:
-      vloc = loc
-
-  assert uloc is not None
-  assert vloc is not None
-
-  if uloc == vloc: return S
-  Tl = [list(group) for group in S]
-  Tl[vloc].remove(v)
-  Tl[uloc].append(v)
-  return tuple(group for group in rec_sort(Tl) if group)
-    
-from fractions import Fraction
-from decimal import Decimal
-def absorption_time(G: nx.Graph):
-  N = len(G)
-  B = number_of_partitions(N)
-  A = np.zeros((B, B))
-  b = np.zeros((B,))
-  S_to_idx = {rec_sort(S): idx for idx, S in enumerate(partitions(tuple(G.nodes())))}
-  for S, idx in S_to_idx.items():
-    A[idx, idx] = 1
-    if len(S) == 1: continue
-    for u in G.nodes():
-      for (_, v) in G.edges(u):
-        T = birth_event(S, u, v)
-        A[idx, S_to_idx[T]] += -(1/N) * (1/G.degree(u))
-        b[idx] = 1
-
-  t = np.linalg.solve(A, b)
-  return (round(Decimal.from_float(t[-1]), 3),) #, Fraction.from_float(t[-1]).limit_denominator(10**9))
 
 import itertools
 
@@ -193,30 +80,85 @@ def cheegers_constant(G: nx.Graph):
   return min_ratio
 
 
-def samples_info(G: nx.Graph):
-  N = len(G)
-  samples = list(sample(lambda: trial_absorption_time(G), times=1000))
-  mean = np.mean(samples)
-  std = np.std(samples)
-  print(f"{mean} +/- {std} steps {'*' if len(G.edges()) == N*(N-1)//2 else ''} {nx.edge_connectivity(G)}")
 
-def get_exact(G: nx.Graph):
-  N = len(G)
-  is_complete = len(G.edges()) == N*(N-1)//2
-  at = absorption_time(G)[0]
-  print(f"{at} {'<-- complete' if is_complete else ''}")
+
+from functools import lru_cache
+
+
+
+
+def H(N):
+  return sum(1/i for i in range(1, N+1))
+
+def compute_grid(N):
+  G = nx.Graph()
+  for i in range(N):
+    for j in range(N):
+      G.add_edge((i, j), ((i+1)%N, j))
+      G.add_edge((i, j), ((i-1)%N, j))
+      G.add_edge((i, j), (i, (j+1)%N))
+      G.add_edge((i, j), (i, (j-1)%N))
+
+  print(G)
+  print(list(partitions(tuple(G.nodes()))))
+  steps = get_exact(G)
+  print(steps)
+
+
 
 def main(args):
-  DRAW_GRAPH = False
-  N = args.n
-  for G in yield_all_graph6(Path(f"data/connected-n{N}.g6")):
-    if DRAW_GRAPH:
-      nx.draw(G)
-      plt.show()
+  slowest(args.N) 
 
-    # get_samples(G)
-    get_exact(G)
 
+
+
+def main4(args):
+  xs = []
+  ys = []
+  for n in range(1, args.n+1):
+    G = slowest(n)
+    abs_time = get_exact(G)
+    nx.draw(G)
+    plt.show()
+    print(n, abs_time)
+    xs.append(n)
+    ys.append(abs_time)
+
+  plt.plot(xs, ys, 'o-', label='Slowest')
+  plt.xlabel(r'Number of nodes, $N$')
+  plt.ylabel(r'Expected absorption time, $T$')
+  plt.title('Expected absorption time, neutral drift, exact')
+  plt.legend()
+  plt.show()
+
+@lru_cache(maxsize=None)
+def h(parts):
+  if any(x < 0 for x in parts): return 0
+  parts = tuple(sorted(x for x in parts if x > 0))
+  n = sum(parts)
+  l = len(parts)
+  if parts == (n,): return 0
+  return 1 + sum(
+    parts[r]*parts[s]/n**2 * h(tuple(x + (-1 if i==r else +1 if i==s else 0) for i, x in enumerate(parts)))
+    for r in range(l)
+    for s in range(l)
+  )
+
+def main2(args):
+  for n in range(1, args.n+1):
+    G = nx.star_graph(n)
+    # for v in G.nodes():
+    #   G.add_edge(v, v)
+    S = None # (tuple(range(n-1)), (n-1,),) + ()*(n-2) if n > 1 else ((0,),)
+    # S = tuple((i,) for i in range(n))
+    # guess = n**2-n - sum(
+    # # guess = (n-1)**2 - sum(
+    #   sum(k*(n+len(S[i])-2*k)/(n-k) for k in range(1, len(S[i])))
+    #   for i in range(len(S))
+    # )
+    abs_time = get_exact(G, S)
+    print(abs_time)#, guess)
+  # search(G)
 
 def parse_args():
   parser = argparse.ArgumentParser(description="compute expected number of steps until absorption in multi-type Moran process on an undirected graph.")
@@ -224,6 +166,10 @@ def parse_args():
   return parser.parse_args()
 
 
+def main5(args):
+  for n in range(1, args.n+1):
+    print(h((1,)*n))
+
 if __name__ == '__main__':
   args = parse_args()
-  main(args)
+  main2(args)

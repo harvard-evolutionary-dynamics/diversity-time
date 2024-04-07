@@ -1,0 +1,9 @@
+N,graph description
+1,single-node/star
+2,path/star
+3,path/star
+4,star
+5,star
+6,conjoined-star
+7,conjoined-star
+8,

@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!DOCTYPE ipe SYSTEM "ipe.dtd">
+<ipe version="70000" creator="Ipe 7.2.7">
+  <info created="D2024-04-07" modified="D2024-04-07"/>
+  <ipestyle name="basic">
+    <symbol name="arrow/normal(spx)">
+      <path stroke="sym-stroke" fill="sym-fill" pen="sym-pen">
+        0 0 m
+        1.5 -0.5 l
+        1 0 l
+        1.5 0.5 l
+        0 0 l
+        h
+      </path>
+    </symbol>
+    <symbol name="mark/disk(sx)">
+      <path fill="sym-stroke">
+        0.6 0 0 0 360 arc
+        h
+      </path>
+    </symbol>
+    <pathstyle cap="1" join="1"/>
+    <textstyle name="normal" size="normal"/>
+    <textstyle name="minitoc" begin="section" size="tiny" stretch="1.2"/>
+    <layout paper="595 842" frame="566 804"/>
+    <gridsize name="4 pts" value="4"/>
+    <gridsize name="8 pts" value="8"/>
+    <gridsize name="16 pts" value="16"/>
+    <gridsize name="32 pts" value="32"/>
+    <gridsize name="64 pts" value="64"/>
+  </ipestyle>
+  <page>
+    <layer name="alpha"/>
+    <view layers="alpha" active="alpha"/>
+    <text layer="alpha" pos="100 800" size="normal">A Simple Rectangle</text>
+    <path layer="alpha" stroke="black">
+      100 700 m
+      300 700 l
+      300 500 l
+      100 500 l
+      h
+    </path>
+  </page>
+</ipe>
