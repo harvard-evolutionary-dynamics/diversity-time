@@ -46,17 +46,6 @@ def partition_walking(args):
   sns.boxplot(df, x="n", y="steps", showmeans=True)
   plt.show()
 
-
-
-
-
-
-
-
-
-
-
-
 import itertools
 
 def cheegers_constant(G: nx.Graph):

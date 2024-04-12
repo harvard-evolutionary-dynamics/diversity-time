@@ -1,6 +1,8 @@
 from utils import yield_all_graph6
 from pathlib import Path
 from absorption import get_exact
+from classes import conjoined_star_graph
+
 import matplotlib.pyplot as plt
 import networkx as nx
 
@@ -31,11 +33,11 @@ def draw_slowest(N):
 def draw(N):
   xs = []
   ys = []
-  for n in range(3, N+1):
-    G = slowest(n)
+  for n in range(1, N+1):
+    G = conjoined_star_graph(n) # G = slowest(n) # the slowest for N <= 8 is the conjoined star!
+    abs_time = get_exact(G)
     nx.draw(G)
     plt.show()
-    abs_time = get_exact(G)
     print(n, abs_time)
     xs.append(n)
     ys.append(abs_time)
@@ -45,10 +47,10 @@ def draw(N):
 
   plt.plot(xs, ys, 'o-')
   plt.xlabel(r'Number of nodes, $N$')
-  plt.ylabel(r'Expected absorption time, $T$')
-  plt.savefig
+  plt.ylabel(r'Absorption time, $T$')
+  plt.savefig(f'plots/slowest.png', dpi=300, bbox_inches="tight")
   plt.show()
 
 if __name__ == '__main__':
-  N = 4
-  draw(4)
+  N = 8
+  draw(N)
