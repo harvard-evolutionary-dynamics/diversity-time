@@ -7,7 +7,7 @@ import functools
 
 from utils import sample
 from absorption import trial_absorption_time
-from classes import conjoined_star_graph
+from classes import conjoined_star_graph, long_conjoined_star_graph, complete_with_safe
 from typing import *
 from multiprocessing import Pool
 from dataclasses import dataclass
@@ -40,19 +40,23 @@ def perfect_binary_tree(n): return perfect_kary_tree(n, 2)
 def perfect_ternary_tree(n): return perfect_kary_tree(n, 3)
 def perfect_quadary_tree(n): return perfect_kary_tree(n, 4)
 def perfect_fiveary_tree(n): return perfect_kary_tree(n, 5)
+def custom_long_conjoined_star_graph(n):
+  return long_conjoined_star_graph(n, k=n//3)
 
 GRAPH_GENERATORS = [
   GraphGenerator(nx.complete_graph, 'complete'),
-  GraphGenerator(star_graph, 'star'),
-  GraphGenerator(conjoined_star_graph, 'conjoined star'),
-  GraphGenerator(nx.cycle_graph, 'cycle'),
-  GraphGenerator(complete_bipartite_graph, 'complete bipartite'),
-  GraphGenerator(nx.path_graph, 'path'),
-  GraphGenerator(barbell_graph, 'barbell'),
-  GraphGenerator(perfect_binary_tree, 'perfect binary tree'),
-  GraphGenerator(perfect_ternary_tree, 'perfect ternary tree'),
-  GraphGenerator(perfect_quadary_tree, 'perfect quadary tree'),
-  GraphGenerator(perfect_fiveary_tree, 'perfect 5-ary tree'),
+  GraphGenerator(complete_with_safe, 'complete with safe'),
+  # GraphGenerator(star_graph, 'star'),
+  # GraphGenerator(conjoined_star_graph, 'conjoined star'),
+  # GraphGenerator(custom_long_conjoined_star_graph, 'long conjoined star'),
+  # GraphGenerator(nx.cycle_graph, 'cycle'),
+  # GraphGenerator(complete_bipartite_graph, 'complete bipartite'),
+  # GraphGenerator(nx.path_graph, 'path'),
+  # GraphGenerator(barbell_graph, 'barbell'),
+  # GraphGenerator(perfect_binary_tree, 'perfect binary tree'),
+  # GraphGenerator(perfect_ternary_tree, 'perfect ternary tree'),
+  # GraphGenerator(perfect_quadary_tree, 'perfect quadary tree'),
+  # GraphGenerator(perfect_fiveary_tree, 'perfect 5-ary tree'),
 ]
 
 def simulate(graph_generator: GraphGenerator, n: int):
@@ -75,13 +79,6 @@ def draw(N):
     )):
       if datum:
         data.append(datum)
-
-  # for name, (graph_generator, ys) in results.items():
-  #   data.extend([(x, y, name) for x, y in zip(xs, ys) if y is not None])
-
-  # D = 6
-  # for d in range(1, D+1):
-  #   data.extend([(x, x**d, f'$N^{d}$', .3) for x in xs])
 
   df = pd.DataFrame(data, columns=['number_of_nodes', 'absorption_time', 'graph_family'])
   plot = sns.lineplot(
@@ -116,5 +113,5 @@ def draw(N):
   fig.savefig('plots/trends.png', dpi=dpi)
 
 if __name__ == '__main__':
-  N = 40
+  N = 50
   draw(N)

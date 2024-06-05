@@ -8,7 +8,7 @@ from decimal import Decimal
 from fractions import Fraction
 from functools import lru_cache
 
-def trial_absorption_time(G: nx.Graph):
+def trial_absorption_time(G: nx.Graph, interactive: bool = False):
   # Map of type -> locations.
   S = {idx: {u} for idx, u in enumerate(G.nodes())}
   S_rev = {v: k
@@ -19,6 +19,7 @@ def trial_absorption_time(G: nx.Graph):
   V = G.nodes()
   steps = 0
 
+  if interactive: yield S
   while len(S) > 1:
     population_with_weights = [(type_, len(locations)) for type_, locations in S.items()]
     birther_type_ = random.choices(
@@ -40,6 +41,8 @@ def trial_absorption_time(G: nx.Graph):
       S_rev[dier] = birther_type_
     
     steps += 1
+    if interactive: yield S
+
   return steps
 
 def sample(fn, times):
@@ -110,6 +113,7 @@ def absorption_time(G: nx.Graph, SS=None):
   A = np.zeros((B, B))
   b = np.zeros((B,))
   S_to_idx = {rec_sort(S): idx for idx, S in enumerate(partitions(tuple(G.nodes())))}
+  # print(S_to_idx.keys())
   for S, idx in S_to_idx.items():
     A[idx, idx] = 1
     if len(S) == 1: continue
