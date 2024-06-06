@@ -19,7 +19,7 @@ def trial_absorption_time(G: nx.Graph, interactive: bool = False):
   V = G.nodes()
   steps = 0
 
-  if interactive: yield S
+  if interactive: yield (steps, S)
   while len(S) > 1:
     population_with_weights = [(type_, len(locations)) for type_, locations in S.items()]
     birther_type_ = random.choices(
@@ -41,7 +41,7 @@ def trial_absorption_time(G: nx.Graph, interactive: bool = False):
       S_rev[dier] = birther_type_
     
     steps += 1
-    if interactive: yield S
+    if interactive: yield (steps, S)
 
   return steps
 

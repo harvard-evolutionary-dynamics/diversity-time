@@ -7,41 +7,20 @@ import functools
 
 from utils import sample
 from absorption import trial_absorption_time
-from classes import conjoined_star_graph, long_conjoined_star_graph, complete_with_safe
+from classes import *
 from typing import *
 from multiprocessing import Pool
-from dataclasses import dataclass
 
 plt.rcParams.update({
   "text.usetex": True,
   "font.family": "Helvetica"
 })
 
-
 def samples_info(G: nx.Graph, times: int = 100):
   samples = list(sample(lambda: trial_absorption_time(G), times=times))
   mean = np.mean(samples)
   return mean
 
-@dataclass
-class GraphGenerator:
-  build_graph: Callable[[int], nx.Graph]
-  name: str
-
-def star_graph(n): return nx.star_graph(n-1)
-def complete_bipartite_graph(n): return nx.complete_bipartite_graph(n//2+(n%2), n//2)
-def barbell_graph(n):
-  if n % 2 == 1: return None
-  if n // 2 <= 2: return nx.path_graph(n)
-  return nx.barbell_graph(n//2, 0)
-
-def perfect_kary_tree(n, k): return nx.balanced_tree(k, int(h)) if np.isclose(h := np.emath.logn(k, n*(k-1)+1)-1, np.round(h)) else None
-def perfect_binary_tree(n): return perfect_kary_tree(n, 2)
-def perfect_ternary_tree(n): return perfect_kary_tree(n, 3)
-def perfect_quadary_tree(n): return perfect_kary_tree(n, 4)
-def perfect_fiveary_tree(n): return perfect_kary_tree(n, 5)
-def custom_long_conjoined_star_graph(n):
-  return long_conjoined_star_graph(n, k=n//3)
 
 GRAPH_GENERATORS = [
   GraphGenerator(nx.complete_graph, 'complete'),
