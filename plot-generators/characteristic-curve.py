@@ -31,8 +31,8 @@ NUM_SIMULATIONS = int(os.getenv("NUM_SIMULATIONS"))
 STAT_TO_CALCULATE = os.getenv("STAT_TO_CALCULATE").strip().lower()
 MODE = os.getenv("MODE").strip().lower()
 GRAPH_GENERATORS = [
-  GraphGenerator(nx.complete_graph, 'complete'),
-  # GraphGenerator(conjoined_star_graph, 'conjoined star'),
+  # GraphGenerator(nx.complete_graph, 'complete'),
+  GraphGenerator(conjoined_star_graph, 'conjoined star'),
   # GraphGenerator(nx.cycle_graph, 'cycle'),
   # GraphGenerator(square_periodic_grid, 'square periodic grid'),
   # GraphGenerator(star_graph, 'star'),
@@ -124,6 +124,7 @@ def simulate_single(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dict[
 
   assert len(G) == n, (graph_generator.name, n)
   for trial in range(NUM_SIMULATIONS):
+    logger.info((graph_generator.name, trial))
     for steps, S in trial_absorption_time(G, interactive=True):
       stats_at_steps[steps].append(
         Stats(
@@ -166,7 +167,7 @@ def draw_multiple(df: pd.DataFrame):
   plot = sns.scatterplot(
     df,
     x='time',
-    y='spatial_diversity',
+    y=STAT_TO_CALCULATE,
     hue='graph_family',
     linewidth=0,
     alpha=1.0
@@ -178,7 +179,7 @@ def draw_multiple(df: pd.DataFrame):
   )
 
   plt.xlabel(r'Time, $T$')
-  plt.ylabel(r"Average Spatial Diversity, $\overline{D}_s$")
+  plt.ylabel(f"Average {STAT_TO_CALCULATE}, $\\overline{{D}}$")
   plt.xscale('log')
   # plt.yscale('log')
   # plt.xlim(left=0)
@@ -195,7 +196,7 @@ def draw_single(df: pd.DataFrame):
   plot = sns.lineplot(
     df,
     x='time',
-    y='spatial_diversity',
+    y=STAT_TO_CALCULATE,
     hue='trial',
     # markers=True,
     legend=False,
@@ -209,7 +210,7 @@ def draw_single(df: pd.DataFrame):
   )
 
   plt.xlabel(r'Time, $T$')
-  plt.ylabel(r"Spatial Diversity, $D_s$")
+  plt.ylabel(f"{STAT_TO_CALCULATE}, $D$")
   # plt.xscale('log')
   # plt.yscale('log')
   # plt.xlim(left=0)
