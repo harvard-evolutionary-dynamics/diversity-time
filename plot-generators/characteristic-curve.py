@@ -32,11 +32,11 @@ CHUNKSIZE = int(os.getenv("CHUNKSIZE", default=NUM_SIMULATIONS // NUM_WORKERS))
 STAT_TO_CALCULATE = os.getenv("STAT_TO_CALCULATE").strip().lower()
 MODE = os.getenv("MODE").strip().lower()
 GRAPH_GENERATORS = [
-  GraphGenerator(nx.complete_graph, 'complete'),
+  # GraphGenerator(nx.complete_graph, 'complete'),
   GraphGenerator(conjoined_star_graph, 'conjoined star'),
-  GraphGenerator(nx.cycle_graph, 'cycle'),
-  GraphGenerator(square_periodic_grid, 'square periodic grid'),
-  GraphGenerator(star_graph, 'star'),
+  # GraphGenerator(nx.cycle_graph, 'cycle'),
+  # GraphGenerator(square_periodic_grid, 'square periodic grid'),
+  # GraphGenerator(star_graph, 'star'),
 ]
 
 
@@ -82,31 +82,39 @@ T = TypeVar("T")
 def calculate_average(dataset: List[T], extractor: Callable[[T], float], pad_value: float):
   return np.mean([extractor(datum) for datum in dataset] + [pad_value] * max(NUM_SIMULATIONS-len(dataset), 0))
 
-def one_simulation(G: nx.Graph) -> List[Tuple[int, Stats]]:
+def one_simulation(args: Tuple[nx.Graph, int]) -> List[Tuple[int, Stats]]:
+  G, trial = args
+  logger.info((G, trial))
   return [
     (steps, Stats(
       simpsons_index=simpsons_index(S, N) if STAT_TO_CALCULATE == 'simpsons_index' else None,
       spatial_diversity=spatial_diversity(S, G) if STAT_TO_CALCULATE == 'spatial_diversity' else None,
       num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
+      trial=trial,
     ))
     for steps, S in trial_absorption_time(G, interactive=True)
   ]
 
 import itertools
-def simulate_multiple(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dict[int, Stats]]:
-  logger.info((graph_generator.name, n))
-  if (G := graph_generator.build_graph(n)) is None: return None
-  assert len(G) == n, (graph_generator.name, n)
 
+def get_stats_at_steps(G: nx.Graph) -> List[Tuple[int, Stats]]:
   total_results: List[Tuple[int, Stats]] = []
   with Pool(NUM_WORKERS) as p:
-    for results in p.imap_unordered(one_simulation, itertools.repeat(G, NUM_SIMULATIONS), chunksize=CHUNKSIZE):
+    for results in p.imap_unordered(one_simulation, zip(itertools.repeat(G, NUM_SIMULATIONS), range(NUM_SIMULATIONS)), chunksize=CHUNKSIZE):
       total_results.extend(results)
       
   stats_at_steps: Dict[int, List[Stats]] = defaultdict(list)
   for steps, stats in total_results:
     stats_at_steps[steps].append(stats)
 
+  return stats_at_steps
+
+def simulate_multiple(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dict[int, Stats]]:
+  logger.info((graph_generator.name, n))
+  if (G := graph_generator.build_graph(n)) is None: return None
+  assert len(G) == n, (graph_generator.name, n)
+
+  stats_at_steps = get_stats_at_steps(G)
   avg_stat_at_steps = {
     steps: Stats(
       simpsons_index=calculate_average(dataset=stats, extractor=lambda stat: stat.simpsons_index, pad_value=Stats.ABSORBED_SIMPSONS_INDEX) if STAT_TO_CALCULATE == 'simpsons_index' else None,
@@ -126,23 +134,15 @@ def process_multiple(datum: Tuple[str, Dict[int, Stats]]):
     data.append((graph_family_name, steps, stat.trial, stat.simpsons_index, stat.num_samples, stat.num_types_left, stat.spatial_diversity))
   return data
 
+
 def simulate_single(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dict[int, List[Stats]]]:
   logger.info((graph_generator.name, n))
   stats_at_steps: DefaultDict[int, List[Stats]] = defaultdict(list)
   if (G := graph_generator.build_graph(n)) is None: return None
 
   assert len(G) == n, (graph_generator.name, n)
-  for trial in range(NUM_SIMULATIONS):
-    for steps, S in trial_absorption_time(G, interactive=True):
-      stats_at_steps[steps].append(
-        Stats(
-          simpsons_index=simpsons_index(S, N) if STAT_TO_CALCULATE == 'simpsons_index' else None,
-          spatial_diversity=spatial_diversity(S, G) if STAT_TO_CALCULATE == 'spatial_diversity' else None,
-          num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
-          trial=trial,
-        )
-      )
 
+  stats_at_steps = get_stats_at_steps(G)
   return (graph_generator.name, stats_at_steps)
 
 def process_single(datum: Tuple[str, Dict[int, List[Stats]]]):
@@ -153,8 +153,6 @@ def process_single(datum: Tuple[str, Dict[int, List[Stats]]]):
       data.append((graph_family_name, steps, stat.trial, stat.simpsons_index, stat.num_samples, stat.num_types_left, stat.spatial_diversity))
   return data
 
-
-import itertools
 
 def compute() -> pd.DataFrame:
   process = process_single if MODE == 'single' else process_multiple if MODE == 'multiple' else None
@@ -176,7 +174,7 @@ def draw_multiple(df: pd.DataFrame):
   plot = sns.scatterplot(
     df,
     x='time',
-    y='spatial_diversity',
+    y=STAT_TO_CALCULATE,
     hue='graph_family',
     linewidth=0,
     alpha=1.0
@@ -188,7 +186,7 @@ def draw_multiple(df: pd.DataFrame):
   )
 
   plt.xlabel(r'Time, $T$')
-  plt.ylabel(r"Average Spatial Diversity, $\overline{D}_s$")
+  plt.ylabel(f"Average {STAT_TO_CALCULATE}, $\\overline{{D}}$")
   plt.xscale('log')
   # plt.yscale('log')
   # plt.xlim(left=0)
@@ -205,12 +203,13 @@ def draw_single(df: pd.DataFrame):
   plot = sns.lineplot(
     df,
     x='time',
-    y='spatial_diversity',
+    y=STAT_TO_CALCULATE,
     hue='trial',
     # markers=True,
     legend=False,
     linestyle='--',
-    alpha=0.5,
+    markeredgecolor=None,
+    alpha=0.25,
     # style='graph_family',
     # dashes=True,
     # sort=True,
@@ -219,7 +218,7 @@ def draw_single(df: pd.DataFrame):
   )
 
   plt.xlabel(r'Time, $T$')
-  plt.ylabel(r"Spatial Diversity, $D_s$")
+  plt.ylabel(f"{STAT_TO_CALCULATE}, $D$")
   # plt.xscale('log')
   # plt.yscale('log')
   # plt.xlim(left=0)
