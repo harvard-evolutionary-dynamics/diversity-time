@@ -8,7 +8,7 @@ import functools
 import os
 
 from utils import sample
-from absorption import trial_absorption_time
+from absorption import trial_absorption_time, trial_absorption_time_interactive
 from classes import *
 from typing import *
 from multiprocessing import Lock, Manager, Pool
@@ -32,11 +32,29 @@ CHUNKSIZE = int(os.getenv("CHUNKSIZE", default=NUM_SIMULATIONS // NUM_WORKERS))
 STAT_TO_CALCULATE = os.getenv("STAT_TO_CALCULATE").strip().lower()
 MODE = os.getenv("MODE").strip().lower()
 GRAPH_GENERATORS = [
-  # GraphGenerator(nx.complete_graph, 'complete'),
   GraphGenerator(conjoined_star_graph, 'conjoined star'),
+  GraphGenerator(star_graph, 'star'),
+  GraphGenerator(meta_conjoined_star_graph, 'meta conjoined star graph'),
+  # GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
+  # GraphGenerator(star_joined_stars_3_stars, 'star joined three stars'),
+  # GraphGenerator(double_leaved_star, 'double leaved star'),
+  # GraphGenerator(triple_leaved_star, 'triple leaved star'),
+  # GraphGenerator(random_regular_6, 'random regular d=6'),
+  # GraphGenerator(random_regular_7, 'random regular d=7'),
+  # GraphGenerator(random_regular_8, 'random regular d=8'),
+  # GraphGenerator(random_regular_9, 'random regular d=9'),
+  # GraphGenerator(random_regular_10, 'random regular d=10'),
+  # GraphGenerator(random_regular_11, 'random regular d=11'),
+  # GraphGenerator(random_regular_12, 'random regular d=12'),
+  # GraphGenerator(random_regular_13, 'random regular d=13'),
+  # GraphGenerator(random_regular_14, 'random regular d=14'),
+  # GraphGenerator(random_regular_15, 'random regular d=15'),
+  # GraphGenerator(random_regular_16, 'random regular d=16'),
+  # GraphGenerator(random_regular_17, 'random regular d=17'),
+  # GraphGenerator(random_regular_18, 'random regular d=18'),
+  # GraphGenerator(nx.complete_graph, 'complete'),
   # GraphGenerator(nx.cycle_graph, 'cycle'),
   # GraphGenerator(square_periodic_grid, 'square periodic grid'),
-  # GraphGenerator(star_graph, 'star'),
 ]
 
 
@@ -49,7 +67,8 @@ def simpsons_index(S: Dict[int, Set[Any]], n: int):
 
 def spatial_diversity(S: Dict[int, Set[Any]], G: nx.Graph) -> float:
   # S is type to set of locations.
-  S_rev = {v: k
+  S_rev = {
+    v: k
     for k, vs in S.items()
     for v in vs
   }
@@ -92,15 +111,15 @@ def one_simulation(args: Tuple[nx.Graph, int]) -> List[Tuple[int, Stats]]:
       num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
       trial=trial,
     ))
-    for steps, S in trial_absorption_time(G, interactive=True)
+    for steps, S in trial_absorption_time_interactive(G)
   ]
 
 import itertools
 
-def get_stats_at_steps(G: nx.Graph) -> List[Tuple[int, Stats]]:
+def get_stats_at_steps(graph_generator: GraphGenerator, N: int) -> Dict[int, List[Stats]]:
   total_results: List[Tuple[int, Stats]] = []
   with Pool(NUM_WORKERS) as p:
-    for results in p.imap_unordered(one_simulation, zip(itertools.repeat(G, NUM_SIMULATIONS), range(NUM_SIMULATIONS)), chunksize=CHUNKSIZE):
+    for results in p.imap_unordered(one_simulation, zip((graph_generator.build_graph(N) for _ in range(NUM_SIMULATIONS)), range(NUM_SIMULATIONS)), chunksize=CHUNKSIZE):
       total_results.extend(results)
       
   stats_at_steps: Dict[int, List[Stats]] = defaultdict(list)
@@ -114,7 +133,7 @@ def simulate_multiple(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dic
   if (G := graph_generator.build_graph(n)) is None: return None
   assert len(G) == n, (graph_generator.name, n)
 
-  stats_at_steps = get_stats_at_steps(G)
+  stats_at_steps = get_stats_at_steps(graph_generator, n)
   avg_stat_at_steps = {
     steps: Stats(
       simpsons_index=calculate_average(dataset=stats, extractor=lambda stat: stat.simpsons_index, pad_value=Stats.ABSORBED_SIMPSONS_INDEX) if STAT_TO_CALCULATE == 'simpsons_index' else None,
@@ -142,7 +161,7 @@ def simulate_single(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dict[
 
   assert len(G) == n, (graph_generator.name, n)
 
-  stats_at_steps = get_stats_at_steps(G)
+  stats_at_steps = get_stats_at_steps(graph_generator, n)
   return (graph_generator.name, stats_at_steps)
 
 def process_single(datum: Tuple[str, Dict[int, List[Stats]]]):
@@ -177,7 +196,8 @@ def draw_multiple(df: pd.DataFrame):
     y=STAT_TO_CALCULATE,
     hue='graph_family',
     linewidth=0,
-    alpha=1.0
+    alpha=1.0,
+    palette='cool',
     # style='graph_family',
     # markers=True,
     # dashes=False,
@@ -188,7 +208,7 @@ def draw_multiple(df: pd.DataFrame):
   plt.xlabel(r'Time, $T$')
   plt.ylabel(f"Average {STAT_TO_CALCULATE}, $\\overline{{D}}$")
   plt.xscale('log')
-  # plt.yscale('log')
+  plt.yscale('log')
   # plt.xlim(left=0)
   plt.title(f'{N=} {NUM_SIMULATIONS=}')
   dpi = 300

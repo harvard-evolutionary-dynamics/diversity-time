@@ -8,7 +8,15 @@ from decimal import Decimal
 from fractions import Fraction
 from functools import lru_cache
 
-def trial_absorption_time(G: nx.Graph, interactive: bool = False):
+def trial_absorption_time_interactive(G: nx.Graph, interactive: bool = False):
+  return _trial_absorption_time(G, interactive=True)
+
+def trial_absorption_time(G: nx.Graph):
+  for e in _trial_absorption_time(G, interactive=False):
+    return e
+  return None
+
+def _trial_absorption_time(G: nx.Graph, interactive: bool = False):
   # Map of type -> locations.
   S = {idx: {u} for idx, u in enumerate(G.nodes())}
   S_rev = {v: k
@@ -43,7 +51,7 @@ def trial_absorption_time(G: nx.Graph, interactive: bool = False):
     steps += 1
     if interactive: yield (steps, S)
 
-  return steps
+  if not interactive: yield steps
 
 def sample(fn, times):
   count = 0
