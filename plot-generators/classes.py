@@ -213,6 +213,11 @@ def square_periodic_grid(n):
   if not is_perfect_square(n): return None
   return nx.grid_2d_graph(isqrt(n), isqrt(n), periodic=True)
 
+
+def conjoined_star_graph_N50(_: int): return conjoined_star_graph(50)
+def star_graph_N50(_: int): return star_graph(50)
+def star_graph_N25(_: int): return star_graph(25)
+
 import matplotlib.pyplot as plt
 
 

@@ -7,18 +7,21 @@ import scipy.special as sp
 from decimal import Decimal
 from fractions import Fraction
 from functools import lru_cache
+from typing import Optional
 
-def trial_absorption_time_interactive(G: nx.Graph, interactive: bool = False):
-  return _trial_absorption_time(G, interactive=True)
+def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = None, mutation_rate: float = 0):
+  return _trial_absorption_time(G, max_steps=max_steps, interactive=True, mutation_rate=mutation_rate)
 
 def trial_absorption_time(G: nx.Graph):
-  for e in _trial_absorption_time(G, interactive=False):
+  for e in _trial_absorption_time(G, max_steps=None, interactive=False):
     return e
   return None
 
-def _trial_absorption_time(G: nx.Graph, interactive: bool = False):
+def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive: bool, mutation_rate: float):
+  assert 0 <= mutation_rate <= 1, mutation_rate
   # Map of type -> locations.
   S = {idx: {u} for idx, u in enumerate(G.nodes())}
+  max_type = len(G.nodes())-1
   S_rev = {v: k
     for k, vs in S.items()
     for v in vs
@@ -28,7 +31,7 @@ def _trial_absorption_time(G: nx.Graph, interactive: bool = False):
   steps = 0
 
   if interactive: yield (steps, S)
-  while len(S) > 1:
+  while (mutation_rate > 0 or len(S) > 1) and (max_steps is None or steps < max_steps):
     population_with_weights = [(type_, len(locations)) for type_, locations in S.items()]
     birther_type_ = random.choices(
       population=[type_ for type_, _ in population_with_weights],
@@ -41,6 +44,13 @@ def _trial_absorption_time(G: nx.Graph, interactive: bool = False):
 
     # Our graphs should not have self loops.
     assert birther != dier
+
+    # possible mutation.
+    if random.random() < mutation_rate:
+      max_type += 1 # introduce new type.
+      birther_type_ = max_type
+      S[birther_type_] = set()
+
     if birther_type_ != dier_type:
       S[birther_type_].add(dier)
       S[dier_type].remove(dier)

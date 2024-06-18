@@ -31,10 +31,14 @@ NUM_SIMULATIONS = int(os.getenv("NUM_SIMULATIONS"))
 CHUNKSIZE = int(os.getenv("CHUNKSIZE", default=NUM_SIMULATIONS // NUM_WORKERS))
 STAT_TO_CALCULATE = os.getenv("STAT_TO_CALCULATE").strip().lower()
 MODE = os.getenv("MODE").strip().lower()
+MAX_STEPS = int(_max_steps) if (_max_steps := os.getenv("MAX_STEPS")) is not None else None
+MUTATION_RATE = float(os.getenv("MUTATION_RATE", default=0))
+
 GRAPH_GENERATORS = [
-  GraphGenerator(conjoined_star_graph, 'conjoined star'),
-  GraphGenerator(star_graph, 'star'),
-  GraphGenerator(meta_conjoined_star_graph, 'meta conjoined star graph'),
+  # GraphGenerator(conjoined_star_graph_N50, 'conjoined star N=50'),
+  # GraphGenerator(star_graph_N50, 'star N=50'),
+  # GraphGenerator(star_graph_N25, 'star N=25'),
+  # GraphGenerator(meta_conjoined_star_graph, 'meta conjoined star graph'),
   # GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
   # GraphGenerator(star_joined_stars_3_stars, 'star joined three stars'),
   # GraphGenerator(double_leaved_star, 'double leaved star'),
@@ -52,9 +56,11 @@ GRAPH_GENERATORS = [
   # GraphGenerator(random_regular_16, 'random regular d=16'),
   # GraphGenerator(random_regular_17, 'random regular d=17'),
   # GraphGenerator(random_regular_18, 'random regular d=18'),
-  # GraphGenerator(nx.complete_graph, 'complete'),
-  # GraphGenerator(nx.cycle_graph, 'cycle'),
-  # GraphGenerator(square_periodic_grid, 'square periodic grid'),
+  GraphGenerator(nx.complete_graph, 'complete'),
+  GraphGenerator(conjoined_star_graph, 'conjoined star'),
+  GraphGenerator(nx.cycle_graph, 'cycle'),
+  GraphGenerator(square_periodic_grid, 'square periodic grid'),
+  GraphGenerator(star_graph, 'star'),
 ]
 
 
@@ -111,7 +117,7 @@ def one_simulation(args: Tuple[nx.Graph, int]) -> List[Tuple[int, Stats]]:
       num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
       trial=trial,
     ))
-    for steps, S in trial_absorption_time_interactive(G)
+    for steps, S in trial_absorption_time_interactive(G, max_steps=MAX_STEPS, mutation_rate=MUTATION_RATE)
   ]
 
 import itertools
@@ -119,7 +125,7 @@ import itertools
 def get_stats_at_steps(graph_generator: GraphGenerator, N: int) -> Dict[int, List[Stats]]:
   total_results: List[Tuple[int, Stats]] = []
   with Pool(NUM_WORKERS) as p:
-    for results in p.imap_unordered(one_simulation, zip((graph_generator.build_graph(N) for _ in range(NUM_SIMULATIONS)), range(NUM_SIMULATIONS)), chunksize=CHUNKSIZE):
+    for results in p.imap(one_simulation, zip((graph_generator.build_graph(N) for _ in range(NUM_SIMULATIONS)), range(NUM_SIMULATIONS)), chunksize=CHUNKSIZE):
       total_results.extend(results)
       
   stats_at_steps: Dict[int, List[Stats]] = defaultdict(list)
@@ -210,7 +216,7 @@ def draw_multiple(df: pd.DataFrame):
   plt.xscale('log')
   plt.yscale('log')
   # plt.xlim(left=0)
-  plt.title(f'{N=} {NUM_SIMULATIONS=}')
+  plt.title(f'{N=} {NUM_SIMULATIONS=} {MUTATION_RATE=}')
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
@@ -242,7 +248,7 @@ def draw_single(df: pd.DataFrame):
   # plt.xscale('log')
   # plt.yscale('log')
   # plt.xlim(left=0)
-  plt.title(f'{graph_family=} {N=} {NUM_SIMULATIONS=}')
+  plt.title(f'{graph_family=} {N=} {NUM_SIMULATIONS=} {MUTATION_RATE=}')
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
