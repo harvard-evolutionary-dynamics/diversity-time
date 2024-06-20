@@ -7,21 +7,38 @@ import scipy.special as sp
 from decimal import Decimal
 from fractions import Fraction
 from functools import lru_cache
-from typing import Optional
+from typing import *
+from collections import defaultdict
 
-def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = None, mutation_rate: float = 0):
-  return _trial_absorption_time(G, max_steps=max_steps, interactive=True, mutation_rate=mutation_rate)
+def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = None, mutation_rate: float = 0, num_initial_types: Optional[int] = None):
+  return _trial_absorption_time(G, max_steps=max_steps, interactive=True, mutation_rate=mutation_rate, num_initial_types=num_initial_types or len(G))
 
 def trial_absorption_time(G: nx.Graph):
-  for e in _trial_absorption_time(G, max_steps=None, interactive=False):
+  for e in _trial_absorption_time(G, max_steps=None, interactive=False, num_initial_types=len(G)):
     return e
   return None
 
-def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive: bool, mutation_rate: float):
+def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive: bool, mutation_rate: float, num_initial_types: int):
   assert 0 <= mutation_rate <= 1, mutation_rate
   # Map of type -> locations.
-  S = {idx: {u} for idx, u in enumerate(G.nodes())}
-  max_type = len(G.nodes())-1
+  initial_types = [
+    idx
+    for idx in range(num_initial_types)
+    for _ in range(len(G) // num_initial_types)
+  ]
+  assert len(initial_types) <= len(G)
+  for idx in range(num_initial_types):
+    if len(initial_types) == len(G): break
+    initial_types.append(idx)
+
+  assert len(initial_types) == len(G)
+  random.shuffle(initial_types)
+
+  S: DefaultDict[int, Set[Any]] = defaultdict(set)
+  for idx, u in zip(initial_types, G.nodes()):
+    S[idx].add(u)
+
+  max_type = num_initial_types-1
   S_rev = {v: k
     for k, vs in S.items()
     for v in vs

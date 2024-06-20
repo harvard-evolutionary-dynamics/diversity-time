@@ -223,6 +223,6 @@ import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
   # G = long_conjoined_star_graph(N=20, k=7)
-  G = meta_conjoined_star_graph(25)
+  G = cyclically_joined_stars_3_stars(50)
   nx.draw(G, nx.spring_layout(G))
   plt.show()

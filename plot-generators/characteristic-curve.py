@@ -26,6 +26,7 @@ plt.rcParams.update({
 N = int(os.getenv("N"))
 # assert is_perfect_square(N), N
 
+NUM_INITIAL_TYPES = int(os.getenv("NUM_INITIAL_TYPES", default=N))
 NUM_WORKERS = int(os.getenv("NUM_WORKERS"))
 NUM_SIMULATIONS = int(os.getenv("NUM_SIMULATIONS"))
 CHUNKSIZE = int(os.getenv("CHUNKSIZE", default=NUM_SIMULATIONS // NUM_WORKERS))
@@ -39,7 +40,6 @@ GRAPH_GENERATORS = [
   # GraphGenerator(star_graph_N50, 'star N=50'),
   # GraphGenerator(star_graph_N25, 'star N=25'),
   # GraphGenerator(meta_conjoined_star_graph, 'meta conjoined star graph'),
-  # GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
   # GraphGenerator(star_joined_stars_3_stars, 'star joined three stars'),
   # GraphGenerator(double_leaved_star, 'double leaved star'),
   # GraphGenerator(triple_leaved_star, 'triple leaved star'),
@@ -56,10 +56,11 @@ GRAPH_GENERATORS = [
   # GraphGenerator(random_regular_16, 'random regular d=16'),
   # GraphGenerator(random_regular_17, 'random regular d=17'),
   # GraphGenerator(random_regular_18, 'random regular d=18'),
-  GraphGenerator(nx.complete_graph, 'complete'),
+  GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
+  # GraphGenerator(nx.complete_graph, 'complete'),
   GraphGenerator(conjoined_star_graph, 'conjoined star'),
-  GraphGenerator(nx.cycle_graph, 'cycle'),
-  GraphGenerator(square_periodic_grid, 'square periodic grid'),
+  # GraphGenerator(nx.cycle_graph, 'cycle'),
+  # GraphGenerator(square_periodic_grid, 'square periodic grid'),
   GraphGenerator(star_graph, 'star'),
 ]
 
@@ -117,7 +118,7 @@ def one_simulation(args: Tuple[nx.Graph, int]) -> List[Tuple[int, Stats]]:
       num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
       trial=trial,
     ))
-    for steps, S in trial_absorption_time_interactive(G, max_steps=MAX_STEPS, mutation_rate=MUTATION_RATE)
+    for steps, S in trial_absorption_time_interactive(G, max_steps=MAX_STEPS, mutation_rate=MUTATION_RATE, num_initial_types=NUM_INITIAL_TYPES)
   ]
 
 import itertools
@@ -203,7 +204,7 @@ def draw_multiple(df: pd.DataFrame):
     hue='graph_family',
     linewidth=0,
     alpha=1.0,
-    palette='cool',
+    # palette='cool',
     # style='graph_family',
     # markers=True,
     # dashes=False,
@@ -216,7 +217,7 @@ def draw_multiple(df: pd.DataFrame):
   plt.xscale('log')
   plt.yscale('log')
   # plt.xlim(left=0)
-  plt.title(f'{N=} {NUM_SIMULATIONS=} {MUTATION_RATE=}')
+  plt.title(f'{N=} {NUM_SIMULATIONS=} {MUTATION_RATE=} {NUM_INITIAL_TYPES=}')
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
@@ -248,7 +249,7 @@ def draw_single(df: pd.DataFrame):
   # plt.xscale('log')
   # plt.yscale('log')
   # plt.xlim(left=0)
-  plt.title(f'{graph_family=} {N=} {NUM_SIMULATIONS=} {MUTATION_RATE=}')
+  plt.title(f'{graph_family=} {N=} {NUM_SIMULATIONS=} {MUTATION_RATE=} {NUM_INITIAL_TYPES=}')
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
