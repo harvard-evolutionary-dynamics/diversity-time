@@ -7,10 +7,38 @@ import scipy.special as sp
 from decimal import Decimal
 from fractions import Fraction
 from functools import lru_cache
+from typing import *
+from collections import defaultdict
 
-def trial_absorption_time(G: nx.Graph, interactive: bool = False):
+def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = None, mutation_rate: float = 0, num_initial_types: Optional[int] = None):
+  return _trial_absorption_time(G, max_steps=max_steps, interactive=True, mutation_rate=mutation_rate, num_initial_types=num_initial_types or len(G))
+
+def trial_absorption_time(G: nx.Graph):
+  for e in _trial_absorption_time(G, max_steps=None, interactive=False, num_initial_types=len(G)):
+    return e
+  return None
+
+def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive: bool, mutation_rate: float, num_initial_types: int):
+  assert 0 <= mutation_rate <= 1, mutation_rate
   # Map of type -> locations.
-  S = {idx: {u} for idx, u in enumerate(G.nodes())}
+  initial_types = [
+    idx
+    for idx in range(num_initial_types)
+    for _ in range(len(G) // num_initial_types)
+  ]
+  assert len(initial_types) <= len(G)
+  for idx in range(num_initial_types):
+    if len(initial_types) == len(G): break
+    initial_types.append(idx)
+
+  assert len(initial_types) == len(G)
+  random.shuffle(initial_types)
+
+  S: DefaultDict[int, Set[Any]] = defaultdict(set)
+  for idx, u in zip(initial_types, G.nodes()):
+    S[idx].add(u)
+
+  max_type = num_initial_types-1
   S_rev = {v: k
     for k, vs in S.items()
     for v in vs
@@ -20,7 +48,7 @@ def trial_absorption_time(G: nx.Graph, interactive: bool = False):
   steps = 0
 
   if interactive: yield (steps, S)
-  while len(S) > 1:
+  while (mutation_rate > 0 or len(S) > 1) and (max_steps is None or steps < max_steps):
     population_with_weights = [(type_, len(locations)) for type_, locations in S.items()]
     birther_type_ = random.choices(
       population=[type_ for type_, _ in population_with_weights],
@@ -33,6 +61,13 @@ def trial_absorption_time(G: nx.Graph, interactive: bool = False):
 
     # Our graphs should not have self loops.
     assert birther != dier
+
+    # possible mutation.
+    if random.random() < mutation_rate:
+      max_type += 1 # introduce new type.
+      birther_type_ = max_type
+      S[birther_type_] = set()
+
     if birther_type_ != dier_type:
       S[birther_type_].add(dier)
       S[dier_type].remove(dier)
@@ -43,7 +78,7 @@ def trial_absorption_time(G: nx.Graph, interactive: bool = False):
     steps += 1
     if interactive: yield (steps, S)
 
-  return steps
+  if not interactive: yield steps
 
 def sample(fn, times):
   count = 0

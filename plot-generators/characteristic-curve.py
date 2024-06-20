@@ -8,10 +8,10 @@ import functools
 import os
 
 from utils import sample
-from absorption import trial_absorption_time
+from absorption import trial_absorption_time, trial_absorption_time_interactive
 from classes import *
 from typing import *
-from multiprocessing import Pool
+from multiprocessing import Lock, Manager, Pool
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from customlogger import logger
@@ -26,16 +26,42 @@ plt.rcParams.update({
 N = int(os.getenv("N"))
 # assert is_perfect_square(N), N
 
+NUM_INITIAL_TYPES = int(os.getenv("NUM_INITIAL_TYPES", default=N))
 NUM_WORKERS = int(os.getenv("NUM_WORKERS"))
 NUM_SIMULATIONS = int(os.getenv("NUM_SIMULATIONS"))
+CHUNKSIZE = int(os.getenv("CHUNKSIZE", default=NUM_SIMULATIONS // NUM_WORKERS))
 STAT_TO_CALCULATE = os.getenv("STAT_TO_CALCULATE").strip().lower()
 MODE = os.getenv("MODE").strip().lower()
+MAX_STEPS = int(_max_steps) if (_max_steps := os.getenv("MAX_STEPS")) is not None else None
+MUTATION_RATE = float(os.getenv("MUTATION_RATE", default=0))
+
 GRAPH_GENERATORS = [
+  # GraphGenerator(conjoined_star_graph_N50, 'conjoined star N=50'),
+  # GraphGenerator(star_graph_N50, 'star N=50'),
+  # GraphGenerator(star_graph_N25, 'star N=25'),
+  # GraphGenerator(meta_conjoined_star_graph, 'meta conjoined star graph'),
+  # GraphGenerator(star_joined_stars_3_stars, 'star joined three stars'),
+  # GraphGenerator(double_leaved_star, 'double leaved star'),
+  # GraphGenerator(triple_leaved_star, 'triple leaved star'),
+  # GraphGenerator(random_regular_6, 'random regular d=6'),
+  # GraphGenerator(random_regular_7, 'random regular d=7'),
+  # GraphGenerator(random_regular_8, 'random regular d=8'),
+  # GraphGenerator(random_regular_9, 'random regular d=9'),
+  # GraphGenerator(random_regular_10, 'random regular d=10'),
+  # GraphGenerator(random_regular_11, 'random regular d=11'),
+  # GraphGenerator(random_regular_12, 'random regular d=12'),
+  # GraphGenerator(random_regular_13, 'random regular d=13'),
+  # GraphGenerator(random_regular_14, 'random regular d=14'),
+  # GraphGenerator(random_regular_15, 'random regular d=15'),
+  # GraphGenerator(random_regular_16, 'random regular d=16'),
+  # GraphGenerator(random_regular_17, 'random regular d=17'),
+  # GraphGenerator(random_regular_18, 'random regular d=18'),
+  GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
   # GraphGenerator(nx.complete_graph, 'complete'),
   GraphGenerator(conjoined_star_graph, 'conjoined star'),
   # GraphGenerator(nx.cycle_graph, 'cycle'),
   # GraphGenerator(square_periodic_grid, 'square periodic grid'),
-  # GraphGenerator(star_graph, 'star'),
+  GraphGenerator(star_graph, 'star'),
 ]
 
 
@@ -48,7 +74,8 @@ def simpsons_index(S: Dict[int, Set[Any]], n: int):
 
 def spatial_diversity(S: Dict[int, Set[Any]], G: nx.Graph) -> float:
   # S is type to set of locations.
-  S_rev = {v: k
+  S_rev = {
+    v: k
     for k, vs in S.items()
     for v in vs
   }
@@ -81,23 +108,39 @@ T = TypeVar("T")
 def calculate_average(dataset: List[T], extractor: Callable[[T], float], pad_value: float):
   return np.mean([extractor(datum) for datum in dataset] + [pad_value] * max(NUM_SIMULATIONS-len(dataset), 0))
 
+def one_simulation(args: Tuple[nx.Graph, int]) -> List[Tuple[int, Stats]]:
+  G, trial = args
+  logger.info((G, trial))
+  return [
+    (steps, Stats(
+      simpsons_index=simpsons_index(S, N) if STAT_TO_CALCULATE == 'simpsons_index' else None,
+      spatial_diversity=spatial_diversity(S, G) if STAT_TO_CALCULATE == 'spatial_diversity' else None,
+      num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
+      trial=trial,
+    ))
+    for steps, S in trial_absorption_time_interactive(G, max_steps=MAX_STEPS, mutation_rate=MUTATION_RATE, num_initial_types=NUM_INITIAL_TYPES)
+  ]
+
+import itertools
+
+def get_stats_at_steps(graph_generator: GraphGenerator, N: int) -> Dict[int, List[Stats]]:
+  total_results: List[Tuple[int, Stats]] = []
+  with Pool(NUM_WORKERS) as p:
+    for results in p.imap(one_simulation, zip((graph_generator.build_graph(N) for _ in range(NUM_SIMULATIONS)), range(NUM_SIMULATIONS)), chunksize=CHUNKSIZE):
+      total_results.extend(results)
+      
+  stats_at_steps: Dict[int, List[Stats]] = defaultdict(list)
+  for steps, stats in total_results:
+    stats_at_steps[steps].append(stats)
+
+  return stats_at_steps
 
 def simulate_multiple(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dict[int, Stats]]:
   logger.info((graph_generator.name, n))
-  stats_at_steps: DefaultDict[int, List[Stats]] = defaultdict(list)
   if (G := graph_generator.build_graph(n)) is None: return None
-
   assert len(G) == n, (graph_generator.name, n)
-  for _ in range(NUM_SIMULATIONS):
-    for steps, S in trial_absorption_time(G, interactive=True):
-      stats_at_steps[steps].append(
-        Stats(
-          simpsons_index=simpsons_index(S, N) if STAT_TO_CALCULATE == 'simpsons_index' else None,
-          spatial_diversity=spatial_diversity(S, G) if STAT_TO_CALCULATE == 'spatial_diversity' else None,
-          num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
-        )
-      )
 
+  stats_at_steps = get_stats_at_steps(graph_generator, n)
   avg_stat_at_steps = {
     steps: Stats(
       simpsons_index=calculate_average(dataset=stats, extractor=lambda stat: stat.simpsons_index, pad_value=Stats.ABSORBED_SIMPSONS_INDEX) if STAT_TO_CALCULATE == 'simpsons_index' else None,
@@ -117,24 +160,15 @@ def process_multiple(datum: Tuple[str, Dict[int, Stats]]):
     data.append((graph_family_name, steps, stat.trial, stat.simpsons_index, stat.num_samples, stat.num_types_left, stat.spatial_diversity))
   return data
 
+
 def simulate_single(graph_generator: GraphGenerator, n: int) -> Tuple[str, Dict[int, List[Stats]]]:
   logger.info((graph_generator.name, n))
   stats_at_steps: DefaultDict[int, List[Stats]] = defaultdict(list)
   if (G := graph_generator.build_graph(n)) is None: return None
 
   assert len(G) == n, (graph_generator.name, n)
-  for trial in range(NUM_SIMULATIONS):
-    logger.info((graph_generator.name, trial))
-    for steps, S in trial_absorption_time(G, interactive=True):
-      stats_at_steps[steps].append(
-        Stats(
-          simpsons_index=simpsons_index(S, N) if STAT_TO_CALCULATE == 'simpsons_index' else None,
-          spatial_diversity=spatial_diversity(S, G) if STAT_TO_CALCULATE == 'spatial_diversity' else None,
-          num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
-          trial=trial,
-        )
-      )
 
+  stats_at_steps = get_stats_at_steps(graph_generator, n)
   return (graph_generator.name, stats_at_steps)
 
 def process_single(datum: Tuple[str, Dict[int, List[Stats]]]):
@@ -151,13 +185,12 @@ def compute() -> pd.DataFrame:
   simulate = simulate_single if MODE == 'single' else simulate_multiple if MODE == 'multiple' else None
 
   data = []
-  with Pool(NUM_WORKERS) as p:
-    for datum in p.starmap(simulate, (
-      (graph_generator, N)
-      for graph_generator in GRAPH_GENERATORS
-    )):
-      if not datum: continue
-      data.extend(process(datum))
+  for datum in itertools.starmap(simulate, (
+    (graph_generator, N)
+    for graph_generator in GRAPH_GENERATORS
+  )):
+    if not datum: continue
+    data.extend(process(datum))
 
   
   df = pd.DataFrame(data, columns=['graph_family', 'time', 'trial', 'simpsons_index', 'num_samples', 'num_types_left', 'spatial_diversity'])
@@ -170,7 +203,8 @@ def draw_multiple(df: pd.DataFrame):
     y=STAT_TO_CALCULATE,
     hue='graph_family',
     linewidth=0,
-    alpha=1.0
+    alpha=1.0,
+    # palette='cool',
     # style='graph_family',
     # markers=True,
     # dashes=False,
@@ -181,9 +215,9 @@ def draw_multiple(df: pd.DataFrame):
   plt.xlabel(r'Time, $T$')
   plt.ylabel(f"Average {STAT_TO_CALCULATE}, $\\overline{{D}}$")
   plt.xscale('log')
-  # plt.yscale('log')
+  plt.yscale('log')
   # plt.xlim(left=0)
-  plt.title(f'{N=} {NUM_SIMULATIONS=}')
+  plt.title(f'{N=} {NUM_SIMULATIONS=} {MUTATION_RATE=} {NUM_INITIAL_TYPES=}')
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
@@ -201,7 +235,8 @@ def draw_single(df: pd.DataFrame):
     # markers=True,
     legend=False,
     linestyle='--',
-    alpha=0.5,
+    markeredgecolor=None,
+    alpha=0.25,
     # style='graph_family',
     # dashes=True,
     # sort=True,
@@ -214,7 +249,7 @@ def draw_single(df: pd.DataFrame):
   # plt.xscale('log')
   # plt.yscale('log')
   # plt.xlim(left=0)
-  plt.title(f'{graph_family=} {N=} {NUM_SIMULATIONS=}')
+  plt.title(f'{graph_family=} {N=} {NUM_SIMULATIONS=} {MUTATION_RATE=} {NUM_INITIAL_TYPES=}')
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()

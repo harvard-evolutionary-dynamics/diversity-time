@@ -3,6 +3,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import os
 import functools
 
 from utils import sample
@@ -10,6 +11,13 @@ from absorption import trial_absorption_time
 from classes import *
 from typing import *
 from multiprocessing import Pool
+from dotenv import load_dotenv
+
+load_dotenv()
+
+N = int(os.environ["N"])
+NUM_WORKERS = int(os.getenv("NUM_WORKERS", default=1))
+NUM_SIMULATIONS = int(os.getenv("NUM_SIMULATIONS", default=100))
 
 plt.rcParams.update({
   "text.usetex": True,
@@ -23,8 +31,12 @@ def samples_info(G: nx.Graph, times: int = 100):
 
 
 GRAPH_GENERATORS = [
-  GraphGenerator(nx.complete_graph, 'complete'),
-  GraphGenerator(complete_with_safe, 'complete with safe'),
+  GraphGenerator(cyclically_joined_5_leaf_stars, 'cyclically joined 5 leaf stars'),
+  GraphGenerator(cyclically_joined_10_leaf_stars, 'cyclically joined 10 leaf stars'),
+  GraphGenerator(cyclically_joined_15_leaf_stars, 'cyclically joined 15 leaf stars'),
+  GraphGenerator(cyclically_joined_20_leaf_stars, 'cyclically joined 20 leaf stars'),
+  # GraphGenerator(nx.complete_graph, 'complete'),
+  # GraphGenerator(complete_with_safe, 'complete with safe'),
   # GraphGenerator(star_graph, 'star'),
   # GraphGenerator(conjoined_star_graph, 'conjoined star'),
   # GraphGenerator(custom_long_conjoined_star_graph, 'long conjoined star'),
@@ -46,7 +58,6 @@ def simulate(graph_generator: GraphGenerator, n: int):
     return (n, abs_time, graph_generator.name)
   return None
 
-NUM_WORKERS = 16
 
 def draw(N):
   data = []
@@ -60,6 +71,7 @@ def draw(N):
         data.append(datum)
 
   df = pd.DataFrame(data, columns=['number_of_nodes', 'absorption_time', 'graph_family'])
+  print('drawing')
   plot = sns.lineplot(
     df,
     x='number_of_nodes',
@@ -92,5 +104,4 @@ def draw(N):
   fig.savefig('plots/trends.png', dpi=dpi)
 
 if __name__ == '__main__':
-  N = 50
   draw(N)
