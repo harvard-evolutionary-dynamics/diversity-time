@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 from customlogger import logger
 from collections import defaultdict
+from pathlib import Path
 
 load_dotenv()
 
@@ -35,7 +36,12 @@ STAT_TO_CALCULATE = os.getenv("STAT_TO_CALCULATE").strip().lower()
 MODE = os.getenv("MODE").strip().lower()
 MAX_STEPS = int(_max_steps) if (_max_steps := os.getenv("MAX_STEPS")) is not None else None
 MUTATION_RATE = float(os.getenv("MUTATION_RATE", default=0))
+USE_EXISTING_DATA = os.getenv("USE_EXISTING_DATA", default='false').lower() not in ('false', '0')
+OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0')
+CHARACTERISTIC_CURVE_DATA_FILE = Path(os.environ["CHARACTERISTIC_CURVE_DATA_FILE"])
+DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
 
+STAT_NAME = {'num_types_left': 'number of types remaining'}
 GRAPH_GENERATORS = [
   # GraphGenerator(conjoined_star_graph_N50, 'conjoined star N=50'),
   # GraphGenerator(star_graph_N50, 'star N=50'),
@@ -57,12 +63,12 @@ GRAPH_GENERATORS = [
   # GraphGenerator(random_regular_16, 'random regular d=16'),
   # GraphGenerator(random_regular_17, 'random regular d=17'),
   # GraphGenerator(random_regular_18, 'random regular d=18'),
-  GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
-  # GraphGenerator(nx.complete_graph, 'complete'),
-  GraphGenerator(conjoined_star_graph, 'conjoined star'),
-  # GraphGenerator(nx.cycle_graph, 'cycle'),
-  # GraphGenerator(square_periodic_grid, 'square periodic grid'),
+  GraphGenerator(nx.complete_graph, 'complete'),
+  GraphGenerator(nx.cycle_graph, 'cycle'),
+  GraphGenerator(conjoined_star_graph, 'double star'),
   GraphGenerator(star_graph, 'star'),
+  # GraphGenerator(, 'cyclically joined three stars'),
+  # GraphGenerator(square_periodic_grid, 'square periodic grid'),
 ]
 
 
@@ -216,16 +222,18 @@ def draw_multiple(df: pd.DataFrame):
   )
 
   plt.xlabel(r'Time, $T$')
-  plt.ylabel(f"Average {STAT_TO_CALCULATE}, $\\overline{{D}}$")
+  plt.ylabel(f"Average {STAT_NAME[STAT_TO_CALCULATE]}, $\\overline{{D}}$")
   plt.xscale('log')
   plt.yscale('log')
   # plt.xlim(left=0)
-  plt.title(f'{N=} {NUM_SIMULATIONS=} {MUTATION_RATE=} {NUM_INITIAL_TYPES=}')
+  # plt.title(f'{N=} {NUM_SIMULATIONS=} {MUTATION_RATE=} {NUM_INITIAL_TYPES=}')
+  handles, lables = plot.get_legend_handles_labels()
+  lgnd = plt.legend(handles, lables, loc='upper left', bbox_to_anchor=(1.05, 1), title='graph family', shadow=True, fancybox=True)
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
   fig.set_size_inches(*(width/dpi, height/dpi))
-  fig.savefig('plots/characteristic-curve-multiple.png', dpi=dpi)
+  fig.savefig('plots/characteristic-curve-multiple.png', dpi=dpi, bbox_inches='tight')
 
 def draw_single(df: pd.DataFrame):
   assert len(GRAPH_GENERATORS) == 1, GRAPH_GENERATORS
@@ -262,7 +270,17 @@ def draw_single(df: pd.DataFrame):
 if __name__ == '__main__':
   if MODE == 'single': raise NotImplementedError(MODE)
   if MODE == 'single': assert len(GRAPH_GENERATORS) == 1, [gg.name for gg in GRAPH_GENERATORS]
-  df = compute() 
-  # save_data(df)
   draw = draw_single if MODE == 'single' else draw_multiple if MODE == 'multiple' else None
-  draw(df)
+
+  df = None
+  if USE_EXISTING_DATA:
+    df = pd.read_pickle(CHARACTERISTIC_CURVE_DATA_FILE)
+  else:
+    df = compute() 
+
+  if OVERWRITE:
+    pd.to_pickle(df, CHARACTERISTIC_CURVE_DATA_FILE)
+
+  if DRAW:
+    logger.info('drawing')
+    draw(df)

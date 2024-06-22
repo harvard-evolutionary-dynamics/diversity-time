@@ -96,7 +96,7 @@ def draw(N):
   )
 
   plt.xlabel(r'Number of nodes, $N$')
-  plt.ylabel(r'Absorption time, $T$')
+  plt.ylabel(r'Average absorption time, $\overline{T}$')
   plt.xscale('log')
   plt.yscale('log')
   #get legend and change stuff
