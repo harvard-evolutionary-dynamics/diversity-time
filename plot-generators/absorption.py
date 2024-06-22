@@ -14,7 +14,7 @@ def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = No
   return _trial_absorption_time(G, max_steps=max_steps, interactive=True, mutation_rate=mutation_rate, num_initial_types=num_initial_types or len(G))
 
 def trial_absorption_time(G: nx.Graph):
-  for e in _trial_absorption_time(G, max_steps=None, interactive=False, num_initial_types=len(G)):
+  for e in _trial_absorption_time(G, max_steps=None, interactive=False, num_initial_types=len(G), mutation_rate=0):
     return e
   return None
 

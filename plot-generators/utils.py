@@ -12,7 +12,7 @@ from pathlib import Path
 from networkx.readwrite.graph6 import data_to_n
 
 sns.set_theme(font_scale=2, rc={'text.usetex' : True})
-sns.set_style("whitegrid", {'axes.grid' : False})
+sns.set_style("ticks") # , {'axes.grid' : True})
 
 def is_undirected(G: nx.DiGraph):
   return all((v, u) in G.edges() for (u, v) in G.edges())
