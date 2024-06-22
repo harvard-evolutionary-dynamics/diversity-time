@@ -106,15 +106,29 @@ def draw(N):
 
   # replace legend using handles and labels from above
   # lgnd = plt.legend(handles, lables, loc='upper right', borderaxespad=0.2, bbox_to_anchor=(1.05, 1), title='graph family', shadow=True, fancybox=True)
-  lgnd = plt.legend(handles, lables, loc='upper left', bbox_to_anchor=(1.05, 1), title='graph family', shadow=True, fancybox=True)
+  graph_families_legend = plt.legend(handles, lables, loc='upper left', bbox_to_anchor=(1.02, 1), title='graph family', shadow=True, fancybox=True)
+  plot.add_artist(graph_families_legend)
+
   # plt.legend()
   # plt.tight_layout()
   # plot.tick_params(axis='both', which='both', length=5, width=2, color='grey')
+
+  # plot level lines.
+  lines = []
+  xs = np.array(list(range(2, N+1)))
+  yss = [xs**d-(2**d-1) for d in range(1, 4+1)]
+  linestyles = [(0, (3,)+(1,)*(2*d+1)) for d in range(1, 4+1)]
+  for d in range(1, 4+1):
+    lines.append(plt.plot(xs, yss[d-1], linestyle=linestyles[d-1], color='grey', alpha=1, label=f'$N^{d}$' if d > 1 else "$N$")[0])
+  for d in range(1, 3+1):
+    plot.fill_between(xs, yss[d-1], yss[d], alpha=.1)
+  plot.legend(lines, [f'$N^{d}$' if d>1 else "$N$" for d in range(1, 4+1)], loc='lower left', bbox_to_anchor=(1.02, 0), title='level lines', shadow=True, fancybox=True)
+
   dpi = 300
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
   fig.set_size_inches(*(width/dpi, height/dpi))
-  fig.savefig('plots/trends.png', dpi=dpi, bbox_inches='tight')
+  fig.savefig('plots/trends.png', dpi=dpi, bbox_inches='tight', bbox_extra_artists=[graph_families_legend])
 
 if __name__ == '__main__':
   draw(N)
