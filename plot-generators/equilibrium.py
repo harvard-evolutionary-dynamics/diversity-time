@@ -134,24 +134,27 @@ def draw(df: pd.DataFrame):
   handles, lables = g.get_legend_handles_labels()
   _ = plt.legend(handles, lables, loc='upper left', bbox_to_anchor=(1.05, 1), title='graph family', shadow=True, fancybox=True)
   g.set(xlabel=r"Mutation rate, $\mu$", ylabel=r"Number of types remaining, $D$")
-  xlabels = ['{:.2g}'.format(x) for x in mutation_rates]
+  xlabels = ['{:.2f}'.format(x) for x in mutation_rates]
   g.set_xticklabels(xlabels)
-  xs = []
-  ys = []
-  seen = set()
-  for line in g.get_lines():
-    xyd = line.get_xydata()
-    if xyd.size == 2:
-      x, y = xyd.flatten()
-      if x not in seen:
-        xs.append(x)
-        ys.append(y)
-        seen.add(x)
 
-  X = np.array(xs).reshape(NUM_INTERVALS, len(GRAPH_GENERATORS)).T
-  Y = np.array(ys).reshape(NUM_INTERVALS, len(GRAPH_GENERATORS)).T
-  for idx in range(len(GRAPH_GENERATORS)):
-    g.plot(X[idx], Y[idx], linestyle='solid', color=colors[idx], linewidth=5)
+  PLOT_LINES = False
+  if PLOT_LINES:
+    xs = []
+    ys = []
+    seen = set()
+    for line in g.get_lines():
+      xyd = line.get_xydata()
+      if xyd.size == 2:
+        x, y = xyd.flatten()
+        if x not in seen:
+          xs.append(x)
+          ys.append(y)
+          seen.add(x)
+
+    X = np.array(xs).reshape(NUM_INTERVALS, len(GRAPH_GENERATORS)).T
+    Y = np.array(ys).reshape(NUM_INTERVALS, len(GRAPH_GENERATORS)).T
+    for idx in range(len(GRAPH_GENERATORS)):
+      g.plot(X[idx], Y[idx], linestyle='solid', color=colors[idx], linewidth=5)
 
   dpi = 300
   width, height = 2*np.array([3024, 1964])
