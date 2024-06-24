@@ -36,6 +36,9 @@ OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0'
 EQUILIBRIUM_DATA_FILE = Path(os.environ["EQUILIBRIUM_DATA_FILE"])
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
 
+INTERVALS = [0.1/N, 1/N, 10/N] # np.linspace(0, 1, NUM_INTERVALS)
+NUM_INTERVALS = len(INTERVALS)
+
 GRAPH_GENERATORS = [
   GraphGenerator(nx.complete_graph, 'complete'),
   GraphGenerator(nx.cycle_graph, 'cycle'),
@@ -87,7 +90,7 @@ def compute() -> pd.DataFrame:
     for datum in p.starmap(calculate, (
       (graph_generator, mutation_rate, trial_number)
       for graph_generator in GRAPH_GENERATORS
-      for mutation_rate in np.linspace(0, 1, NUM_INTERVALS)
+      for mutation_rate in INTERVALS
       for trial_number in range(NUM_SIMULATIONS)
     )):
       data.append(datum)
@@ -130,11 +133,11 @@ def draw(df: pd.DataFrame):
   colors = sns.color_palette(palette, len(GRAPH_GENERATORS))
 
 
-  mutation_rates = np.linspace(0, 1, NUM_INTERVALS)
+  mutation_rates = INTERVALS
   handles, lables = g.get_legend_handles_labels()
   _ = plt.legend(handles, lables, loc='upper left', bbox_to_anchor=(1.05, 1), title='graph family', shadow=True, fancybox=True)
   g.set(xlabel=r"Mutation rate, $\mu$", ylabel=r"Number of types remaining, $D$")
-  xlabels = ['{:.2f}'.format(x) for x in mutation_rates]
+  xlabels = ['{:.3f}'.format(x) for x in mutation_rates]
   g.set_xticklabels(xlabels)
 
   PLOT_LINES = False
