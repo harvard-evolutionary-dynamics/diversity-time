@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from customlogger import logger
 from collections import defaultdict
 from pathlib import Path
+from diversity import num_types_left
 
 load_dotenv()
 
@@ -91,11 +92,7 @@ def spatial_diversity(S: Dict[int, Set[Any]], G: nx.Graph) -> float:
     for (u, v) in G.edges()
   ) / G.number_of_edges()
 
-def num_types_left(S: Dict[int, Set[Any]]):
-  return sum(
-    int(len(locations) > 0)
-    for locations in S.values()
-  )
+
 
 @dataclass
 class Stats:

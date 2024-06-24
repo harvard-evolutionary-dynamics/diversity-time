@@ -11,14 +11,14 @@ from typing import *
 from collections import defaultdict
 
 def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = None, mutation_rate: float = 0, num_initial_types: Optional[int] = None):
-  return _trial_absorption_time(G, max_steps=max_steps, interactive=True, mutation_rate=mutation_rate, num_initial_types=num_initial_types or len(G))
+  return _trial_absorption_time(G, max_steps=max_steps, interactive=True, mutation_rate=mutation_rate, num_initial_types=num_initial_types or len(G), full_final_info=False)
 
 def trial_absorption_time(G: nx.Graph):
-  for e in _trial_absorption_time(G, max_steps=None, interactive=False, num_initial_types=len(G), mutation_rate=0):
+  for e in _trial_absorption_time(G, max_steps=None, interactive=False, num_initial_types=len(G), mutation_rate=0, full_final_info=False):
     return e
   return None
 
-def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive: bool, mutation_rate: float, num_initial_types: int):
+def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive: bool, mutation_rate: float, num_initial_types: int, full_final_info: bool):
   assert 0 <= mutation_rate <= 1, mutation_rate
   # Map of type -> locations.
   initial_types = [
@@ -78,7 +78,8 @@ def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive
     steps += 1
     if interactive: yield (steps, S)
 
-  if not interactive: yield steps
+  if not interactive:
+    yield (steps, S) if full_final_info else steps
 
 def sample(fn, times):
   count = 0
