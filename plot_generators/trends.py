@@ -7,7 +7,7 @@ import os
 import functools
 
 from utils import sample
-from absorption import trial_absorption_time
+from absorption import trial_absorption_time, dB_trial_absorption_time
 from classes import *
 from typing import *
 from multiprocessing import Pool
@@ -24,32 +24,42 @@ USE_EXISTING_DATA = os.getenv("USE_EXISTING_DATA", default='false').lower() not 
 OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0')
 TRENDS_DATA_FILE = Path(os.environ["TRENDS_DATA_FILE"])
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
+DYNAMIC = os.getenv("DYNAMIC", default='Birth-death')
+SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", default=1))
 
 plt.rcParams.update({
   "text.usetex": True,
   "font.family": "Helvetica"
 })
 
-def samples_info(G: nx.Graph, times: int = 100):
-  samples = list(sample(lambda: trial_absorption_time(G), times=times))
+TRIAL_ABSORPTION_TIME_FN = {
+  'Birth-death': trial_absorption_time,
+  'death-Birth': dB_trial_absorption_time,
+}[DYNAMIC]
+
+def samples_info(G: nx.Graph, times: int = NUM_SIMULATIONS):
+  samples = list(sample(lambda: TRIAL_ABSORPTION_TIME_FN(G), times=times))
   mean = np.mean(samples)
   return mean
 
 
 GRAPH_GENERATORS = [
-  GraphGenerator(barbell_graph, 'barbell'),
-  GraphGenerator(nx.complete_graph, 'complete'),
-  GraphGenerator(complete_bipartite_graph, 'complete bipartite'),
-  GraphGenerator(nx.cycle_graph, 'cycle'),
-  GraphGenerator(conjoined_star_graph, 'double star'),
-  GraphGenerator(double_leaved_star, 'double-leaved star'),
-  GraphGenerator(nx.path_graph, 'path'),
-  GraphGenerator(perfect_binary_tree, 'perfect binary tree'),
-  GraphGenerator(square_periodic_grid, 'square periodic grid'),
+  # GraphGenerator(barbell_graph, 'barbell'),
+  # GraphGenerator(nx.complete_graph, 'complete'),
+  # GraphGenerator(complete_bipartite_graph, 'complete bipartite'),
+  # GraphGenerator(nx.cycle_graph, 'cycle'),
+  # GraphGenerator(conjoined_star_graph, 'double star'),
+  # GraphGenerator(double_leaved_star, 'double-leaved star'),
+  # GraphGenerator(nx.path_graph, 'path'),
+  # GraphGenerator(perfect_binary_tree, 'perfect binary tree'),
+  # GraphGenerator(square_periodic_grid, 'square periodic grid'),
   GraphGenerator(star_graph, 'star'),
-  GraphGenerator(cyclically_joined_stars_3_stars, 'triple star'),
-  GraphGenerator(triple_leaved_star, 'triple-leaved star'),
-  GraphGenerator(nx.wheel_graph, 'wheel'),
+  GraphGenerator(multi_column_graph_2, 'multi column graph 2'),
+  GraphGenerator(multi_column_graph_3, 'multi column graph 3'),
+  GraphGenerator(multi_column_graph_4, 'multi column graph 4'),
+  # GraphGenerator(cyclically_joined_stars_3_stars, 'triple star'),
+  # GraphGenerator(triple_leaved_star, 'triple-leaved star'),
+  # GraphGenerator(nx.wheel_graph, 'wheel'),
 ]
 
 def simulate(graph_generator: GraphGenerator, n: int):
@@ -57,6 +67,7 @@ def simulate(graph_generator: GraphGenerator, n: int):
   if G := graph_generator.build_graph(n):
     assert len(G) == n, (graph_generator.name, n)
     abs_time = samples_info(G)
+    logger.info(('done', graph_generator.name, n))
     return (n, abs_time, graph_generator.name)
   return None
 
@@ -71,7 +82,7 @@ def draw(N):
       for datum in p.starmap(simulate, (
         (graph_generator, n)
         for graph_generator in GRAPH_GENERATORS
-        for n in range(2, N+1)
+        for n in range(2, N+1, SAMPLE_RATE)
       )):
         if datum:
           data.append(datum)

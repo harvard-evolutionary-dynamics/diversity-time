@@ -218,11 +218,68 @@ def conjoined_star_graph_N50(_: int): return conjoined_star_graph(50)
 def star_graph_N50(_: int): return star_graph(50)
 def star_graph_N25(_: int): return star_graph(25)
 
+
+def directed_general_star_k(n: int, k: int) -> nx.DiGraph:
+  m = n-k
+  if m < 1: return None
+  G: nx.DiGraph = nx.path_graph(k, nx.DiGraph)
+  for i in range(m):
+    G.add_edge(k+i, 0)
+    G.add_edge(k-1, k+i)
+
+  return G
+
+
+def directed_general_star_2(n: int): return directed_general_star_k(n, 2)
+def directed_general_star_3(n: int): return directed_general_star_k(n, 3)
+def directed_general_star_4(n: int): return directed_general_star_k(n, 4)
+
+def multi_column_graph(n: int, n_columns: int):
+  m = n-1
+  if m % (2 * n_columns) != 0: return None
+  column_height = m // (2 * n_columns)
+  if column_height % 2 != 0: return None
+
+  columns = []
+  for column_idx in range(n_columns):
+    L = nx.path_graph(column_height)
+    R = nx.path_graph(column_height)
+    H: nx.Graph = nx.union(L, R, rename=("L", "R"))
+    H.add_edge(f"R{column_height-1}", f"L{column_height-1}")
+    G: nx.DiGraph = H.to_directed()
+    for row_idx in range(0, column_height-1):
+      G.add_edge(f"L{row_idx}", f"R{row_idx}")
+    columns.append(G)
+
+  G: nx.DiGraph = nx.DiGraph()
+  for column_idx, column in enumerate(columns):
+    G = nx.union(G, column, rename=("", f"{column_idx}"))
+    G.add_edge("center", f"{column_idx}R0")
+    G.add_edge(f"{column_idx}R0", "center")
+  
+  return G
+
+def multi_column_graph_2(n: int): return multi_column_graph(n, 2)
+def multi_column_graph_3(n: int): return multi_column_graph(n, 3)
+def multi_column_graph_4(n: int): return multi_column_graph(n, 4)
+
 import matplotlib.pyplot as plt
 
 
+from collections import defaultdict
 if __name__ == '__main__':
   # G = long_conjoined_star_graph(N=20, k=7)
-  G = cyclically_joined_stars_3_stars(50)
-  nx.draw(G, nx.spring_layout(G))
+  # G = cyclically_joined_stars_3_stars(50)
+  # valids = defaultdict(set)
+  # for k in (2,3,4):
+  #   for n in range(100):
+  #     if multi_column_graph(n, k) is not None:
+  #       valids[k].add(n)
+  
+  # print(set.intersection(*valids.values()))
+  n = 49
+  for k in (2,3,4):
+    G = multi_column_graph(n, k)
+    plt.figure()
+    nx.draw(G, nx.kamada_kawai_layout(G))
   plt.show()

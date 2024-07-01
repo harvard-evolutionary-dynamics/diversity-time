@@ -120,7 +120,7 @@ from matplotlib.ticker import FormatStrFormatter
 
 def draw(df: pd.DataFrame):
   palette = 'tab10'
-  g: plt.Axes = sns.boxplot(
+  g: plt.Axes = sns.violinplot(
     data=df,
     x='mutation_rate',
     y='diversity',

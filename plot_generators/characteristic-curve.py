@@ -41,6 +41,7 @@ USE_EXISTING_DATA = os.getenv("USE_EXISTING_DATA", default='false').lower() not 
 OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0')
 CHARACTERISTIC_CURVE_DATA_FILE = Path(os.environ["CHARACTERISTIC_CURVE_DATA_FILE"])
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
+SAMPLE_RATE = float(os.getenv("SAMPLE_RATE", default=0))
 
 STAT_NAME = {'num_types_left': 'number of types remaining'}
 GRAPH_GENERATORS = [
@@ -68,7 +69,11 @@ GRAPH_GENERATORS = [
   GraphGenerator(nx.cycle_graph, 'cycle'),
   GraphGenerator(conjoined_star_graph, 'double star'),
   GraphGenerator(star_graph, 'star'),
-  # GraphGenerator(, 'cyclically joined three stars'),
+  # GraphGenerator(star_joined_stars_3_stars, 'triple star'),
+  # GraphGenerator(multi_column_graph_2, 'multi column graph 2'),
+  # GraphGenerator(multi_column_graph_3, 'multi column graph 3'),
+  # GraphGenerator(multi_column_graph_4, 'multi column graph 4'),
+  # GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
   # GraphGenerator(square_periodic_grid, 'square periodic grid'),
 ]
 
@@ -118,7 +123,7 @@ def one_simulation(G: nx.Graph, trial_number: int) -> List[Tuple[int, Stats]]:
       num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
       trial=trial_number,
     ))
-    for steps, S in trial_absorption_time_interactive(G, max_steps=MAX_STEPS, mutation_rate=MUTATION_RATE, num_initial_types=NUM_INITIAL_TYPES)
+    for steps, S in trial_absorption_time_interactive(G, max_steps=MAX_STEPS, mutation_rate=MUTATION_RATE, num_initial_types=NUM_INITIAL_TYPES, sample_rate=SAMPLE_RATE)
   ]
 
 # def get_stats_at_steps(G: nx.Graph, trial_number: int) -> Dict[int, List[Stats]]:
@@ -219,7 +224,7 @@ def draw_multiple(df: pd.DataFrame):
   )
 
   plt.xlabel(r'Time, $T$')
-  plt.ylabel(f"Average {STAT_NAME[STAT_TO_CALCULATE]}, $\\overline{{D}}$")
+  plt.ylabel(f"Average {STAT_NAME[STAT_TO_CALCULATE]}, $\\overline{{R}}$")
   plt.xscale('log')
   plt.yscale('log')
   # plt.xlim(left=0)
