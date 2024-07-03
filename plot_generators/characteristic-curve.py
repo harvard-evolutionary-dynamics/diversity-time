@@ -1,4 +1,5 @@
 from __future__ import annotations
+import datetime as dt
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -17,7 +18,7 @@ from dotenv import load_dotenv
 from customlogger import logger
 from collections import defaultdict
 from pathlib import Path
-from diversity import num_types_left
+from diversity import *
 
 load_dotenv()
 
@@ -42,6 +43,8 @@ OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0'
 CHARACTERISTIC_CURVE_DATA_FILE = Path(os.environ["CHARACTERISTIC_CURVE_DATA_FILE"])
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
 SAMPLE_RATE = float(os.getenv("SAMPLE_RATE", default=0))
+TIMESTAMP_STR = dt.datetime.utcnow().strftime("%Y-%m-%d::%H:%M:%S.%f")
+USE_TIMESTAMP = bool(os.getenv("USE_TIMESTAMP", default=True))
 
 STAT_NAME = {'num_types_left': 'number of types remaining'}
 GRAPH_GENERATORS = [
@@ -78,24 +81,7 @@ GRAPH_GENERATORS = [
 ]
 
 
-def simpsons_index(S: Dict[int, Set[Any]], n: int):
-  """complement"""
-  return 1 - sum(
-    len(locations) * (len(locations) - 1)
-    for locations in S.values()
-  ) / (n*(n-1)) 
 
-def spatial_diversity(S: Dict[int, Set[Any]], G: nx.Graph) -> float:
-  # S is type to set of locations.
-  S_rev = {
-    v: k
-    for k, vs in S.items()
-    for v in vs
-  }
-  return sum(
-    int(S_rev[u] != S_rev[v])
-    for (u, v) in G.edges()
-  ) / G.number_of_edges()
 
 
 
@@ -104,10 +90,12 @@ class Stats:
   ABSORBED_SIMPSONS_INDEX: ClassVar[int] = 0
   ABSORBED_NUM_TYPES_LEFT: ClassVar[int] = 1
   ABSORBED_SPATIAL_DIVERSITY: ClassVar[int] = 0
+  ABSORBED_SHANNON_INDEX: ClassVar[int] = 0
 
   simpsons_index: Optional[float] = None
   num_types_left: Optional[float] = None
   spatial_diversity: Optional[float] = None
+  shannon_index: Optional[float] = None
   num_samples: Optional[float] = None
   trial: Optional[int] = None
 
@@ -118,12 +106,19 @@ def calculate_average(dataset: List[T], extractor: Callable[[T], float], pad_val
 def one_simulation(G: nx.Graph, trial_number: int) -> List[Tuple[int, Stats]]:
   return [
     (steps, Stats(
-      simpsons_index=simpsons_index(S, N) if STAT_TO_CALCULATE == 'simpsons_index' else None,
-      spatial_diversity=spatial_diversity(S, G) if STAT_TO_CALCULATE == 'spatial_diversity' else None,
-      num_types_left=num_types_left(S) if STAT_TO_CALCULATE == 'num_types_left' else None,
+      simpsons_index=simpsons_index(S, N),
+      spatial_diversity=spatial_diversity(S, G),
+      num_types_left=num_types_left(S),
+      shannon_index=shannon_index(S, N),
       trial=trial_number,
     ))
-    for steps, S in trial_absorption_time_interactive(G, max_steps=MAX_STEPS, mutation_rate=MUTATION_RATE, num_initial_types=NUM_INITIAL_TYPES, sample_rate=SAMPLE_RATE)
+    for steps, S in trial_absorption_time_interactive(
+      G,
+      max_steps=MAX_STEPS,
+      mutation_rate=MUTATION_RATE,
+      num_initial_types=NUM_INITIAL_TYPES,
+      sample_rate=SAMPLE_RATE,
+    )
   ]
 
 # def get_stats_at_steps(G: nx.Graph, trial_number: int) -> Dict[int, List[Stats]]:
@@ -146,7 +141,16 @@ def process_multiple(transformed_data: Dict[str, Dict[int, Stats]]):
   data: List[Tuple[str, int, Optional[int], Optional[float], Optional[int], Optional[float], Optional[float]]] = []
   for graph_family, stats_at_steps in transformed_data.items():
     for steps, stats in stats_at_steps.items():
-      data.append((graph_family, steps, stats.trial, stats.simpsons_index, stats.num_samples, stats.num_types_left, stats.spatial_diversity))
+      data.append((
+        graph_family,
+        steps,
+        stats.trial,
+        stats.num_samples,
+        stats.num_types_left,
+        stats.simpsons_index,
+        stats.spatial_diversity,
+        stats.shannon_index,
+      ))
   return data
 
 def transform_multiple(data: DefaultDict[str, List[List[Tuple[int, List[Stats]]]]]) -> Dict[str, Dict[int, Stats]]:
@@ -160,9 +164,10 @@ def transform_multiple(data: DefaultDict[str, List[List[Tuple[int, List[Stats]]]
 
     for steps, stats in stats_at_steps.items():
       transformed_data[graph_family][steps] = Stats(
-        simpsons_index=calculate_average(dataset=stats, extractor=lambda stat: stat.simpsons_index, pad_value=Stats.ABSORBED_SIMPSONS_INDEX) if STAT_TO_CALCULATE == 'simpsons_index' else None,
-        num_types_left=calculate_average(dataset=stats, extractor=lambda stat: stat.num_types_left, pad_value=Stats.ABSORBED_NUM_TYPES_LEFT) if STAT_TO_CALCULATE == 'num_types_left' else None,
-        spatial_diversity=calculate_average(dataset=stats, extractor=lambda stat: stat.spatial_diversity, pad_value=Stats.ABSORBED_SPATIAL_DIVERSITY) if STAT_TO_CALCULATE == 'spatial_diversity' else None,
+        simpsons_index=calculate_average(dataset=stats, extractor=lambda stat: stat.simpsons_index, pad_value=Stats.ABSORBED_SIMPSONS_INDEX),
+        num_types_left=calculate_average(dataset=stats, extractor=lambda stat: stat.num_types_left, pad_value=Stats.ABSORBED_NUM_TYPES_LEFT),
+        spatial_diversity=calculate_average(dataset=stats, extractor=lambda stat: stat.spatial_diversity, pad_value=Stats.ABSORBED_SPATIAL_DIVERSITY),
+        shannon_index=calculate_average(dataset=stats, extractor=lambda stat: stat.shannon_index, pad_value=Stats.ABSORBED_SHANNON_INDEX),
         num_samples=len(stats),
       )
 
@@ -183,7 +188,16 @@ def process_single(datum: Tuple[str, Dict[int, List[Stats]]]):
   graph_family_name, stats_at_steps = datum
   for steps, stats in stats_at_steps.items():
     for stat in stats:
-      data.append((graph_family_name, steps, stat.trial, stat.simpsons_index, stat.num_samples, stat.num_types_left, stat.spatial_diversity))
+      data.append((
+        graph_family_name,
+        steps,
+        stat.trial,
+        stat.num_samples,
+        stat.num_types_left,
+        stat.simpsons_index,
+        stat.spatial_diversity,
+        stat.shannon_index,
+      ))
   return data
 
 def compute() -> pd.DataFrame:
@@ -204,7 +218,16 @@ def compute() -> pd.DataFrame:
   transformed_data = transform_multiple(data)
   processed_data = process(transformed_data)
 
-  df = pd.DataFrame(processed_data, columns=['graph_family', 'time', 'trial', 'simpsons_index', 'num_samples', 'num_types_left', 'spatial_diversity'])
+  df = pd.DataFrame(processed_data, columns=[
+    'graph_family',
+    'time',
+    'trial',
+    'num_samples',
+    'num_types_left',
+    'simpsons_index',
+    'spatial_diversity',
+    'shannon_index',
+  ])
   return df
 
 def draw_multiple(df: pd.DataFrame):
@@ -224,7 +247,7 @@ def draw_multiple(df: pd.DataFrame):
   )
 
   plt.xlabel(r'Time, $T$')
-  plt.ylabel(f"Average {STAT_NAME[STAT_TO_CALCULATE]}, $\\overline{{R}}$")
+  plt.ylabel(f"Average {STAT_NAME.get(STAT_TO_CALCULATE, STAT_TO_CALCULATE)}, $\\overline{{D}}$")
   plt.xscale('log')
   plt.yscale('log')
   # plt.xlim(left=0)
@@ -235,7 +258,7 @@ def draw_multiple(df: pd.DataFrame):
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
   fig.set_size_inches(*(width/dpi, height/dpi))
-  fig.savefig('plots/characteristic-curve-multiple.png', dpi=dpi, bbox_inches='tight')
+  fig.savefig(f'plots/characteristic-curve-multiple-{TIMESTAMP_STR}.png', dpi=dpi, bbox_inches='tight')
 
 def draw_single(df: pd.DataFrame):
   assert len(GRAPH_GENERATORS) == 1, GRAPH_GENERATORS
@@ -267,7 +290,7 @@ def draw_single(df: pd.DataFrame):
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
   fig.set_size_inches(*(width/dpi, height/dpi))
-  fig.savefig('plots/characteristic-curve-single.png', dpi=dpi)
+  fig.savefig(f'plots/characteristic-curve-single-{TIMESTAMP_STR}.png', dpi=dpi)
 
 if __name__ == '__main__':
   if MODE == 'single': raise NotImplementedError(MODE)
@@ -281,7 +304,10 @@ if __name__ == '__main__':
     df = compute() 
 
   if OVERWRITE:
-    pd.to_pickle(df, CHARACTERISTIC_CURVE_DATA_FILE)
+    file_name = CHARACTERISTIC_CURVE_DATA_FILE
+    if USE_TIMESTAMP:
+      file_name = f'{file_name.parent}/{file_name.stem}-{TIMESTAMP_STR}{file_name.suffix}'
+    pd.to_pickle(df, file_name)
 
   if DRAW:
     logger.info('drawing')
