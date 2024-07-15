@@ -36,7 +36,7 @@ OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0'
 EQUILIBRIUM_DATA_FILE = Path(os.environ["EQUILIBRIUM_DATA_FILE"])
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
 
-INTERVALS = [0.1/N, 1/N, 10/N] # np.linspace(0, 1, NUM_INTERVALS)
+INTERVALS = [1/N] # [0.1/N, 1/N, 10/N] # np.linspace(0, 1, NUM_INTERVALS)
 NUM_INTERVALS = len(INTERVALS)
 
 GRAPH_GENERATORS = [
@@ -120,7 +120,7 @@ from matplotlib.ticker import FormatStrFormatter
 
 def draw(df: pd.DataFrame):
   palette = 'tab10'
-  g: plt.Axes = sns.violinplot(
+  g: plt.Axes = sns.boxplot(
     data=df,
     x='mutation_rate',
     y='diversity',

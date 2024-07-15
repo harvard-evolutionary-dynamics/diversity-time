@@ -11,6 +11,7 @@ import seaborn as sns
 from pathlib import Path
 from plot_generators.absorption import get_exact
 
+
 plt.rcParams.update({
   "text.usetex": True,
   "font.family": "Helvetica"
@@ -30,7 +31,7 @@ def walk(n):
       if part == 0: break
       new_partition.append(part)
     partition = new_partition
-    
+
     steps += 1
 
   return steps
@@ -53,20 +54,20 @@ def cheegers_constant(G: nx.Graph):
   # Source: GPT-4
   nodes = list(G.nodes())
   min_ratio = float('inf') # Initialize the minimum ratio to infinity.
-  
+
   # The subsets considered are all the subsets of the nodes except the empty set and the set of all nodes.
   for i in range(1, len(nodes)):
     for subset in itertools.combinations(nodes, i):
       S = set(subset)
       Sc = set(nodes) - S # Sc is the complement of S.
-      
+
       # Calculate the boundary size, which is the number of edges between S and Sc.
       boundary_size = sum(1 for u, v in itertools.product(S, Sc) if G.has_edge(u, v))
-      
+
       # Calculate the Cheeger’s constant for the current subset and update the minimum ratio.
       ratio = boundary_size / min(len(S), len(Sc))
       min_ratio = min(min_ratio, ratio)
-          
+
   return min_ratio
 
 
@@ -97,7 +98,7 @@ def compute_grid(N):
 
 
 def main(args):
-  slowest(args.N) 
+  slowest(args.N)
 
 
 

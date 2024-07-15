@@ -25,7 +25,7 @@ OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0'
 TRENDS_DATA_FILE = Path(os.environ["TRENDS_DATA_FILE"])
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
 DYNAMIC = os.getenv("DYNAMIC", default='Birth-death')
-SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", default=1))
+SAMPLE_RATE = float(os.getenv("SAMPLE_RATE", default=0))
 
 plt.rcParams.update({
   "text.usetex": True,
@@ -45,18 +45,18 @@ def samples_info(G: nx.Graph, times: int = NUM_SIMULATIONS):
 
 GRAPH_GENERATORS = [
   # GraphGenerator(barbell_graph, 'barbell'),
-  # GraphGenerator(nx.complete_graph, 'complete'),
+  GraphGenerator(nx.complete_graph, 'complete'),
   # GraphGenerator(complete_bipartite_graph, 'complete bipartite'),
-  # GraphGenerator(nx.cycle_graph, 'cycle'),
-  # GraphGenerator(conjoined_star_graph, 'double star'),
+  GraphGenerator(nx.cycle_graph, 'cycle'),
+  GraphGenerator(conjoined_star_graph, 'double star'),
   # GraphGenerator(double_leaved_star, 'double-leaved star'),
-  # GraphGenerator(nx.path_graph, 'path'),
+  GraphGenerator(nx.path_graph, 'path'),
   # GraphGenerator(perfect_binary_tree, 'perfect binary tree'),
   # GraphGenerator(square_periodic_grid, 'square periodic grid'),
   GraphGenerator(star_graph, 'star'),
-  GraphGenerator(multi_column_graph_2, 'multi column graph 2'),
-  GraphGenerator(multi_column_graph_3, 'multi column graph 3'),
-  GraphGenerator(multi_column_graph_4, 'multi column graph 4'),
+  # GraphGenerator(multi_column_graph_2, 'multi column graph 2'),
+  # GraphGenerator(multi_column_graph_3, 'multi column graph 3'),
+  # GraphGenerator(multi_column_graph_4, 'multi column graph 4'),
   # GraphGenerator(cyclically_joined_stars_3_stars, 'triple star'),
   # GraphGenerator(triple_leaved_star, 'triple-leaved star'),
   # GraphGenerator(nx.wheel_graph, 'wheel'),
@@ -94,6 +94,8 @@ def draw(N):
   if not DRAW: return
 
   logger.info('drawing')
+  graph_families = set([gg.name for gg in GRAPH_GENERATORS])
+  df = df[df['graph_family'].isin(graph_families)]
   plot = sns.lineplot(
     df,
     x='number_of_nodes',

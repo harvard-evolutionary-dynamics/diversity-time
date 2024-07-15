@@ -44,7 +44,7 @@ CHARACTERISTIC_CURVE_DATA_FILE = Path(os.environ["CHARACTERISTIC_CURVE_DATA_FILE
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
 SAMPLE_RATE = float(os.getenv("SAMPLE_RATE", default=0))
 TIMESTAMP_STR = dt.datetime.utcnow().strftime("%Y-%m-%d::%H:%M:%S.%f")
-USE_TIMESTAMP = bool(os.getenv("USE_TIMESTAMP", default=True))
+USE_TIMESTAMP = str(os.getenv("USE_TIMESTAMP", default=True)).lower() == 'true'
 
 STAT_NAME = {'num_types_left': 'number of types remaining'}
 GRAPH_GENERATORS = [
@@ -79,10 +79,6 @@ GRAPH_GENERATORS = [
   # GraphGenerator(cyclically_joined_stars_3_stars, 'cyclically joined three stars'),
   # GraphGenerator(square_periodic_grid, 'square periodic grid'),
 ]
-
-
-
-
 
 
 @dataclass
@@ -232,8 +228,10 @@ def compute() -> pd.DataFrame:
 
 def draw_multiple(df: pd.DataFrame):
   plot = sns.scatterplot(
-    df,
+    # df[df["time"] > 0],
+    data=df,
     x='time',
+    # y=df[STAT_TO_CALCULATE],# * df['time'],
     y=STAT_TO_CALCULATE,
     hue='graph_family',
     linewidth=0,
@@ -246,10 +244,16 @@ def draw_multiple(df: pd.DataFrame):
     # markersize=20,
   )
 
+  # plt.xlim(left=1)
   plt.xlabel(r'Time, $T$')
   plt.ylabel(f"Average {STAT_NAME.get(STAT_TO_CALCULATE, STAT_TO_CALCULATE)}, $\\overline{{D}}$")
+  # plt.xscale('function', functions=
+  #   [lambda x: np.divide(1, x, where=x!=0)]*2
+  # )
+  # plt.xticks([np.floor(1.1**x) for x in range(int(np.log(df["time"].max())))])
   plt.xscale('log')
   plt.yscale('log')
+
   # plt.xlim(left=0)
   # plt.title(f'{N=} {NUM_SIMULATIONS=} {MUTATION_RATE=} {NUM_INITIAL_TYPES=}')
   handles, lables = plot.get_legend_handles_labels()
@@ -301,7 +305,7 @@ if __name__ == '__main__':
   if USE_EXISTING_DATA:
     df = pd.read_pickle(CHARACTERISTIC_CURVE_DATA_FILE)
   else:
-    df = compute() 
+    df = compute()
 
   if OVERWRITE:
     file_name = CHARACTERISTIC_CURVE_DATA_FILE

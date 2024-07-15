@@ -10,7 +10,13 @@ from functools import lru_cache
 from typing import *
 from collections import defaultdict
 
-def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = None, mutation_rate: float = 0, num_initial_types: Optional[int] = None, sample_rate: int = 0):
+def trial_absorption_time_interactive(
+  G: nx.Graph,
+  max_steps: Optional[int] = None,
+  mutation_rate: float = 0,
+  num_initial_types: Optional[int] = None,
+  sample_rate: int = 0,
+):
   return _trial_absorption_time(
     G,
     max_steps=max_steps,
@@ -22,11 +28,28 @@ def trial_absorption_time_interactive(G: nx.Graph, max_steps: Optional[int] = No
   )
 
 def trial_absorption_time(G: nx.Graph):
-  for e in _trial_absorption_time(G, max_steps=None, interactive=False, num_initial_types=len(G), mutation_rate=0, full_final_info=False, sample_rate=0):
+  for e in _trial_absorption_time(
+    G,
+    max_steps=None,
+    interactive=False,
+    num_initial_types=len(G),
+    mutation_rate=0,
+    full_final_info=False,
+    sample_rate=0,
+  ):
     return e
   return None
 
-def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive: bool, mutation_rate: float, num_initial_types: int, full_final_info: bool, sample_rate: int):
+def _trial_absorption_time(
+  G: nx.Graph,
+  *,
+  max_steps: Optional[int],
+  interactive: bool,
+  mutation_rate: float,
+  num_initial_types: int,
+  full_final_info: bool,
+  sample_rate: int,
+):
   """birth-death"""
   assert 0 <= mutation_rate <= 1, mutation_rate
   assert sample_rate >= 0, sample_rate
@@ -55,7 +78,8 @@ def _trial_absorption_time(G: nx.Graph, *, max_steps: Optional[int], interactive
     S[idx].add(u)
 
   max_type = num_initial_types-1
-  S_rev = {v: k
+  S_rev = {
+    v: k
     for k, vs in S.items()
     for v in vs
   }

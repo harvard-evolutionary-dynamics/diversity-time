@@ -57,7 +57,7 @@ def trial_cftime(G: nx.DiGraph, S: Optional[Set], r: float):
       mutants.add(dier)
     elif dier in mutants:
       mutants.remove(dier)
-    
+
     steps += 1
   return steps
 
@@ -108,7 +108,7 @@ def digraph6_to_data(string):
 # def data_to_n(data):
 #   """Read initial one-, four- or eight-unit value from graph6
 #   integer sequence.
-# 
+#
 #   Return (value, rest of seq.)"""
 #   if data[0] <= 62:
 #     return data[0], data[1:]
@@ -149,7 +149,7 @@ def parse_digraph6(string):
   HEADER = '>>digraph6<<'
   if string.startswith(HEADER):
     string = string[len(HEADER):]
-  
+
   assert string[0] == "&", string
   string = string[1:]
   data = digraph6_to_data(string)
@@ -220,48 +220,95 @@ class SquareRootScale(mscale.ScaleBase):
     """
     ScaleBase class for generating square root scale.
     """
- 
+
     name = 'squareroot'
- 
+
     def __init__(self, axis, **kwargs):
         # note in older versions of matplotlib (<3.1), this worked fine.
         # mscale.ScaleBase.__init__(self)
 
         # In newer versions (>=3.1), you also need to pass in `axis` as an arg
         mscale.ScaleBase.__init__(self, axis)
- 
+
     def set_default_locators_and_formatters(self, axis):
         axis.set_major_locator(ticker.AutoLocator())
         axis.set_major_formatter(ticker.ScalarFormatter())
         axis.set_minor_locator(ticker.NullLocator())
         axis.set_minor_formatter(ticker.NullFormatter())
- 
+
     def limit_range_for_scale(self, vmin, vmax, minpos):
         return  max(0., vmin), vmax
- 
+
     class SquareRootTransform(mtransforms.Transform):
         input_dims = 1
         output_dims = 1
         is_separable = True
- 
-        def transform_non_affine(self, a): 
+
+        def transform_non_affine(self, a):
             return np.array(a)**0.5
- 
+
         def inverted(self):
             return SquareRootScale.InvertedSquareRootTransform()
- 
+
     class InvertedSquareRootTransform(mtransforms.Transform):
         input_dims = 1
         output_dims = 1
         is_separable = True
- 
+
         def transform(self, a):
             return np.array(a)**2
- 
+
         def inverted(self):
             return SquareRootScale.SquareRootTransform()
- 
+
     def get_transform(self):
         return self.SquareRootTransform()
- 
+
 mscale.register_scale(SquareRootScale)
+
+
+class ReciprocalScale(mscale.ScaleBase):
+    name = 'reciprocal'
+
+    def __init__(self, axis, **kwargs):
+        # note in older versions of matplotlib (<3.1), this worked fine.
+        # mscale.ScaleBase.__init__(self)
+
+        # In newer versions (>=3.1), you also need to pass in `axis` as an arg
+        mscale.ScaleBase.__init__(self, axis)
+
+    def set_default_locators_and_formatters(self, axis):
+        axis.set_major_locator(ticker.AutoLocator())
+        axis.set_major_formatter(ticker.ScalarFormatter())
+        axis.set_minor_locator(ticker.NullLocator())
+        axis.set_minor_formatter(ticker.NullFormatter())
+
+    def limit_range_for_scale(self, vmin, vmax, minpos):
+        return max(1., vmin), vmax
+
+    class ReciprocalTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform_non_affine(self, a):
+            return 1 / np.array(a)
+
+        def inverted(self):
+            return ReciprocalScale.InvertedReciprocalTransform()
+
+    class InvertedReciprocalTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform(self, a):
+            return 1 / np.array(a)
+
+        def inverted(self):
+            return ReciprocalScale.ReciprocalTransform()
+
+    def get_transform(self):
+        return self.ReciprocalTransform()
+
+mscale.register_scale(ReciprocalScale)
