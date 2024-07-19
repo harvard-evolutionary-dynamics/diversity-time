@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import os
 import pandas as pd
 import pprint
 import seaborn as sns
@@ -15,12 +15,10 @@ from collections import defaultdict
 from customlogger import logger
 from dataclasses import dataclass
 from diversity import *
-from dotenv import load_dotenv
 from multiprocessing import Pool
 from pathlib import Path
 from typing import *
 
-load_dotenv()
 
 T = TypeVar("T")
 
@@ -166,7 +164,7 @@ class Simulations:
     plot = sns.scatterplot(
       data=df,
       x='time',
-      y=self.params.STAT_TO_CALCULATE,
+      y=df[self.params.STAT_TO_CALCULATE],#/self.params.N,
       hue='graph_family',
       linewidth=0,
       alpha=1.0,
@@ -185,32 +183,67 @@ class Simulations:
     fig.set_size_inches(*(width/dpi, height/dpi))
     fig.savefig(f'plots/characteristic-curve-multiple-{self.params.TIMESTAMP_STR}.png', dpi=dpi, bbox_inches='tight')
 
+POSSIBLE_GRAPH_GENERATORS = [
+  GraphGenerator(nx.complete_graph, 'complete'),
+  GraphGenerator(nx.cycle_graph, 'cycle'),
+  GraphGenerator(conjoined_star_graph, 'double star'),
+  GraphGenerator(star_graph, 'star'),
+]
 
-def get_params():
+def get_params(args: argparse.Namespace):
   return Params(
-    N=(_n := int(os.getenv("N"))),
-    NUM_INITIAL_TYPES=int(os.getenv("NUM_INITIAL_TYPES", default=_n)),
-    NUM_WORKERS=int(os.getenv("NUM_WORKERS")),
-    NUM_SIMULATIONS=int(os.getenv("NUM_SIMULATIONS")),
-    CHUNKSIZE=int(os.getenv("CHUNKSIZE", default=1)),
-    STAT_TO_CALCULATE=os.getenv("STAT_TO_CALCULATE").strip().lower(),
-    MAX_STEPS=int(_max_steps) if (_max_steps := os.getenv("MAX_STEPS")) is not None else None,
-    MUTATION_RATE=float(os.getenv("MUTATION_RATE", default=0)),
-    USE_EXISTING_DATA=os.getenv("USE_EXISTING_DATA", default='false').lower() not in ('false', '0'),
-    OVERWRITE=os.getenv("OVERWRITE", default='false').lower() not in ('false', '0'),
-    CHARACTERISTIC_CURVE_DATA_FILE=Path(os.environ["CHARACTERISTIC_CURVE_DATA_FILE"]),
-    DRAW=os.getenv("DRAW", default='false').lower() not in ('false', '0'),
-    SAMPLE_RATE=float(os.getenv("SAMPLE_RATE", default=0)),
-    TIMESTAMP_STR=dt.datetime.utcnow().strftime("%Y-%m-%d::%H:%M:%S.%f"),
-    USE_TIMESTAMP=str(os.getenv("USE_TIMESTAMP", default=True)).lower() == 'true',
+    N=args.N, #  or (_n := int(os.getenv("N"))),
+    NUM_INITIAL_TYPES=args.num_initial_types, # or int(os.getenv("NUM_INITIAL_TYPES", default=_n)),
+    NUM_WORKERS=args.num_workers, # or int(os.getenv("NUM_WORKERS")),
+    NUM_SIMULATIONS=args.num_simulations, # or int(os.getenv("NUM_SIMULATIONS")),
+    CHUNKSIZE=args.chunksize, # int(os.getenv("CHUNKSIZE", default=1)),
+    STAT_TO_CALCULATE=args.stat_to_calculate, # os.getenv("STAT_TO_CALCULATE").strip().lower(),
+    MAX_STEPS=args.max_steps, # int(_max_steps) if (_max_steps := os.getenv("MAX_STEPS")) is not None else None,
+    MUTATION_RATE=args.mutation_rate, # float(os.getenv("MUTATION_RATE", default=0)),
+    USE_EXISTING_DATA=args.use_existing_data,#os.getenv("USE_EXISTING_DATA", default='false').lower() not in ('false', '0'),
+    OVERWRITE=args.overwrite,#os.getenv("OVERWRITE", default='false').lower() not in ('false', '0'),
+    CHARACTERISTIC_CURVE_DATA_FILE=args.characteristic_curve_data_file, # Path(os.environ["CHARACTERISTIC_CURVE_DATA_FILE"]),
+    DRAW=args.draw,#os.getenv("DRAW", default='false').lower() not in ('false', '0'),
+    SAMPLE_RATE=args.sample_rate, # float(os.getenv("SAMPLE_RATE", default=0)),
+    TIMESTAMP_STR=args.timestamp_str, # dt.datetime.utcnow().strftime("%Y-%m-%d::%H:%M:%S.%f"),
+    USE_TIMESTAMP=args.use_timestamp, # str(os.getenv("USE_TIMESTAMP", default=True)).lower() == 'true',
     GRAPH_GENERATORS=[
-      GraphGenerator(nx.complete_graph, 'complete'),
-      # GraphGenerator(nx.cycle_graph, 'cycle'),
-      # GraphGenerator(conjoined_star_graph, 'double star'),
-      # GraphGenerator(star_graph, 'star'),
+      g
+      for g in POSSIBLE_GRAPH_GENERATORS
+      if g.name in args.graph_generators  
     ],
   )
 
+def get_args():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--N', type=int, required=True)
+  parser.add_argument('--num-initial-types', type=int, required=True)
+  parser.add_argument('--num-workers', type=int, required=True)
+  parser.add_argument('--num-simulations', type=int, required=True)
+  parser.add_argument('--max-steps', type=int, required=True)
+  parser.add_argument('--sample-rate', type=float, required=True)
+  parser.add_argument('--mutation-rate', type=float, required=True)
+  parser.add_argument('--chunksize', type=int, required=True)
+  parser.add_argument('--characteristic-curve-data-file', type=Path, required=True)
+  parser.add_argument('--timestamp-str', type=str, required=True)
+  parser.add_argument('--stat-to-calculate', choices=[
+      'num_types_left',
+      'simpsons_index',
+      'spatial_diversity',
+      'shannon_index',
+    ],
+    type=str,
+    required=True,
+  )
+  parser.add_argument('--graph-generators','--list', nargs='+', type=str, required=True)
+
+
+  parser.add_argument('--use-existing-data', action='store_true')
+  parser.add_argument('--draw', action='store_true')
+  parser.add_argument('--overwrite', action='store_true')
+  parser.add_argument('--use-timestamp', action='store_true')
+
+  return parser.parse_args()
 
 def setup_plotting():
   plt.rcParams.update({
@@ -219,7 +252,7 @@ def setup_plotting():
   })
 
 if __name__ == '__main__':
-  params = get_params()
+  params = get_params(get_args())
   logger.info(str(params))
   setup_plotting()
   simulations = Simulations(params)

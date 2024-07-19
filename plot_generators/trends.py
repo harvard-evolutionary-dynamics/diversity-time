@@ -71,6 +71,8 @@ def simulate(graph_generator: GraphGenerator, n: int):
     return (n, abs_time, graph_generator.name)
   return None
 
+def should_sample(s):
+  return s == np.floor(SAMPLE_RATE ** np.ceil(np.emath.logn(SAMPLE_RATE, s)))
 
 def draw(N):
   df = None
@@ -82,7 +84,8 @@ def draw(N):
       for datum in p.starmap(simulate, (
         (graph_generator, n)
         for graph_generator in GRAPH_GENERATORS
-        for n in range(2, N+1, SAMPLE_RATE)
+        for n in range(2, N+1)
+        if should_sample(n)
       )):
         if datum:
           data.append(datum)
@@ -128,11 +131,12 @@ def draw(N):
 
   # plot level lines.
   lines = []
-  xs = np.array(list(range(2, N+1)))
-  yss = [xs**d-(2**d-1) for d in range(1, 4+1)]
+  xs = np.array(list(range(10, N+1)))
+  # yss = [xs**d-(2**d-1) for d in range(1, 4+1)]
+  yss = [xs**d for d in range(1, 4+1)]
   linestyles = [(0, (3,)+(1,)*(2*d+1)) for d in range(1, 4+1)]
   for d in range(1, 4+1):
-    lines.append(plt.plot(xs, yss[d-1], linestyle=linestyles[d-1], color='grey', alpha=1, label=f'$N^{d}$' if d > 1 else "$N$")[0])
+    lines.append(plt.plot(xs, yss[d-1], linestyle=linestyles[d-1], lw=2, color='grey', alpha=1, label=f'$N^{d}$' if d > 1 else "$N$")[0])
   for d in range(1, 3+1):
     plot.fill_between(xs, yss[d-1], yss[d], alpha=.1)
   plot.legend(lines, [f'$N^{d}$' if d>1 else "$N$" for d in range(1, 4+1)], loc='lower left', bbox_to_anchor=(1.02, 0), title='level lines', shadow=True, fancybox=True)
