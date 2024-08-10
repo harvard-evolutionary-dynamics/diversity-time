@@ -181,7 +181,7 @@ class Simulations:
     width, height = 2*np.array([3024, 1964])
     fig = plot.get_figure()
     fig.set_size_inches(*(width/dpi, height/dpi))
-    fig.savefig(f'plots/characteristic-curve-multiple-{self.params.TIMESTAMP_STR}.png', dpi=dpi, bbox_inches='tight')
+    fig.savefig(f'plots/characteristic-curve-{self.params.TIMESTAMP_STR}.png', dpi=dpi, bbox_inches='tight')
 
 POSSIBLE_GRAPH_GENERATORS = [
   GraphGenerator(nx.complete_graph, 'complete'),

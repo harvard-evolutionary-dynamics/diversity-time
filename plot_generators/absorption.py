@@ -83,7 +83,7 @@ def _trial_absorption_time(
     for k, vs in S.items()
     for v in vs
   }
-  should_sample = lambda s: s == np.floor(sample_rate ** np.ceil(np.emath.logn(sample_rate, s)))
+  should_sample = lambda s: (sample_rate == 0) or (s == np.floor(sample_rate ** np.ceil(np.emath.logn(sample_rate, s))))
 
   steps = 0
   if interactive: yield (steps, S)
@@ -254,21 +254,21 @@ def birth_event(S, u, v):
   Tl[uloc].append(v)
   return tuple(group for group in rec_sort(Tl) if group)
 
-def absorption_time(G: nx.Graph, SS=None, full=False):
-  """No self loops allowed."""
+def absorption_time(G: nx.Graph, SS=None, full=False, bd=True):
+  """No self loops allowed. birth-death by default."""
   N = len(G)
   B = number_of_partitions(N)
   A = np.zeros((B, B))
   b = np.zeros((B,))
   S_to_idx = {rec_sort(S): idx for idx, S in enumerate(partitions(tuple(G.nodes())))}
-  # print(S_to_idx.keys())
+  normalize = (lambda u,_: 1./G.degree(u)) if bd else (lambda _,v: 1./G.degree(v)) 
   for S, idx in S_to_idx.items():
     A[idx, idx] = 1
     if len(S) == 1: continue
     for u in G.nodes():
       for (_, v) in G.edges(u):
         T = birth_event(S, u, v)
-        A[idx, S_to_idx[T]] += (-1/N) * (1/G.degree(u))
+        A[idx, S_to_idx[T]] += (-1/N) * normalize(u, v)
     b[idx] = 1
 
   t = np.linalg.solve(A, b)
@@ -311,9 +311,9 @@ def absorption_time_frac(G: nx.Graph, SS=None, full=False):
     return (t[idx],)
 
 
-@lru_cache(maxsize=None)
-def get_exact(G: nx.Graph, S=None, full=False):
+# @lru_cache(maxsize=None)
+def get_exact(G: nx.Graph, S=None, full=False, bd=True):
   assert all(type(x) is int for x in G.nodes())
   N = len(G)
-  at = absorption_time_frac(G, S, full=full)
+  at = absorption_time(G, S, full=full, bd=bd)
   return at if full else at[-1]

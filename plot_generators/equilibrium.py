@@ -36,7 +36,7 @@ OVERWRITE = os.getenv("OVERWRITE", default='false').lower() not in ('false', '0'
 EQUILIBRIUM_DATA_FILE = Path(os.environ["EQUILIBRIUM_DATA_FILE"])
 DRAW = os.getenv("DRAW", default='false').lower() not in ('false', '0')
 
-INTERVALS = [1/N] # [0.1/N, 1/N, 10/N] # np.linspace(0, 1, NUM_INTERVALS)
+INTERVALS = [0.01/N, .1/N, 1/N] # np.linspace(0, 1, NUM_INTERVALS)
 NUM_INTERVALS = len(INTERVALS)
 
 GRAPH_GENERATORS = [
@@ -76,14 +76,16 @@ def calculate(graph_generator: GraphGenerator, mutation_rate: float, trial_numbe
     mutation_rate=mutation_rate,
     num_initial_types=1,
     full_final_info=True,
+    sample_rate=0,
   ))
+  logger.info(('done', graph_generator.name, mutation_rate, trial_number))
   return Equilibrium(
     graph_family=graph_generator.name,
     mutation_rate=mutation_rate,
     diversity=num_types_left(S),
     trial_number=trial_number,
   )
-  
+
 def compute() -> pd.DataFrame:
   data: List[Equilibrium] = []
   with Pool(NUM_WORKERS) as p:
@@ -112,7 +114,7 @@ def compute() -> pd.DataFrame:
   #     diversity_mean=np.mean(values),
   #     diversity_variance=np.var(values),
   #   ))
-  
+
   # organized_data = [(s.graph_family, s.mutation_rate, s.diversity_mean, s.diversity_variance) for s in stats]
   # return pd.DataFrame(data=organized_data, columns=['graph_family', 'mutation_rate', 'diversity_mean', 'diversity_variance'])
 
@@ -172,7 +174,7 @@ def main():
   if USE_EXISTING_DATA:
     df = pd.read_pickle(EQUILIBRIUM_DATA_FILE)
   else:
-    df = compute() 
+    df = compute()
 
   logger.info(f'\n{df}')
   if OVERWRITE:
