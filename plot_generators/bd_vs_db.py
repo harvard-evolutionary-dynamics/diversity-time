@@ -50,7 +50,7 @@ def store_stats(stats: List[Stat], N: int):
 
 
 if __name__ == '__main__':
-  N = 7
+  N = 3
   stats = get_stats(N)
   with Halo("storing stats"):
     store_stats(stats, N)

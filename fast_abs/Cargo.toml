@@ -1,0 +1,10 @@
+[package]
+name = "fast_abs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+csv = "1.1"
+graph6 = "2.0.1"
+nalgebra = "0.33.0"
+ndarray = "0.16.0"

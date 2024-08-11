@@ -53,7 +53,7 @@ def _trial_absorption_time(
   """birth-death"""
   assert 0 <= mutation_rate <= 1, mutation_rate
   assert sample_rate >= 0, sample_rate
-  
+
   if not isinstance(G, nx.DiGraph):
     G: nx.DiGraph = nx.to_directed(G)
 
@@ -226,6 +226,7 @@ def rec_sort(xs):
   new_xs.sort()
   return tuple(new_xs)
 
+@lru_cache(maxsize=None)
 def number_of_partitions(n):
   if n == 0: return 1
   return sum(
@@ -253,6 +254,14 @@ def birth_event(S, u, v):
   Tl[vloc].remove(v)
   Tl[uloc].append(v)
   return tuple(group for group in rec_sort(Tl) if group)
+
+
+def list_partitions(N):
+  return [rec_sort(S) for S in partitions(tuple(range(N)))]
+
+@lru_cache(maxsize=None)
+def get_indices(N: int):
+  return {rec_sort(S): idx for idx, S in enumerate(partitions(tuple(range(N))))}
 
 def absorption_time(G: nx.Graph, SS=None, full=False, bd=True):
   """No self loops allowed. birth-death by default."""
