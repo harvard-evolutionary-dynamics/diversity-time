@@ -8,6 +8,7 @@ import matplotlib.cm as cm
 from pathlib import Path
 from matplotlib.backend_bases import PickEvent
 from enum import Enum, auto
+from time import time_ns
 
 N = 8
 STATS_FILE = Path(f"/Users/david/Dropbox/experiments/diversity/raw-data/bd-vs-db-{N}-v3.csv")
@@ -43,14 +44,15 @@ def onpick(event: PickEvent):
   G = nx.graph6.from_graph6_bytes(bytes.fromhex(graph6).strip())
   plt.figure()
 
-  pos = nx.layout.kamada_kawai_layout(G)
-  connectionstyle = "arc3,rad=.1"
+  pos = nx.layout.spring_layout(G) # nx.layout.kamada_kawai_layout(G)
+  connectionstyle = "arc3,rad=.2"
   # if nx.is_planar(G):
   #   pos = nx.layout.planar_layout(G)
   #   connectionstyle = "arc3,rad=0"
 
-  nx.draw(G, pos=pos, connectionstyle=connectionstyle, arrows=True)
-  plt.show()
+  nx.draw(G, pos=pos, connectionstyle=connectionstyle, arrows=True, node_color='#17becf', width=10, node_size=1000)
+  plt.savefig(f'plots/a-{time_ns()}.png', transparent=True, dpi=300, bbox_inches='tight')
+  # plt.show()
 
 
 
@@ -96,4 +98,5 @@ with sns.plotting_context("notebook", font_scale=1.5):
   g.axes.fill_between(nxs, h(nxs)-200, h(nxs), alpha=.1)
   fig.canvas.mpl_connect("pick_event", onpick)
 
+# plt.savefig(f'plots/bd-vs-db-n8.png', dpi=300, bbox_inches="tight")
 plt.show()

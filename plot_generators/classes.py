@@ -194,9 +194,7 @@ class GraphGenerator:
 def star_graph(n): return nx.star_graph(n-1)
 def complete_bipartite_graph(n): return nx.complete_bipartite_graph(n//2+(n%2), n//2)
 def barbell_graph(n):
-  # if n % 2 == 1: return None
   if n // 2 <= 2: return nx.path_graph(n)
-
   m1 = n//3
   m2 = n-2*m1
   return nx.barbell_graph(m1, m2)

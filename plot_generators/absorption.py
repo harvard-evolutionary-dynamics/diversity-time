@@ -325,5 +325,5 @@ def absorption_time_frac(G: nx.Graph, SS=None, full=False, bd=True):
 def get_exact(G: nx.Graph, S=None, full=False, bd=True):
   assert all(type(x) is int for x in G.nodes())
   N = len(G)
-  at = absorption_time_frac(G, S, full=full, bd=bd)
+  at = absorption_time(G, S, full=full, bd=bd)
   return at if full else at[-1]

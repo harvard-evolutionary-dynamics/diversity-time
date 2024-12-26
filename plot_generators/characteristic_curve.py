@@ -250,6 +250,7 @@ def setup_plotting():
     "text.usetex": True,
     "font.family": "Helvetica"
   })
+  sns.set_context("poster", font_scale=1.75)
 
 if __name__ == '__main__':
   params = get_params(get_args())
