@@ -45,16 +45,18 @@ def samples_info(G: nx.Graph, times: int = NUM_SIMULATIONS):
   return mean
 
 GRAPH_GENERATORS = [
-  GraphGenerator(barbell_graph, 'barbell'),
-  GraphGenerator(nx.complete_graph, 'complete'),
+  # GraphGenerator(barbell_graph, 'barbell'),
+  # GraphGenerator(nx.complete_graph, 'complete'),
   # GraphGenerator(complete_bipartite_graph, 'complete bipartite'),
-  GraphGenerator(nx.cycle_graph, 'cycle'),
-  GraphGenerator(conjoined_star_graph, 'double star'),
+  GraphGenerator(contracting_path, 'contracting path'),
+  GraphGenerator(contracting_star_three_blades, 'contracting star'),
+  # GraphGenerator(nx.cycle_graph, 'cycle'),
+  # GraphGenerator(conjoined_star_graph, 'double star'),
   # GraphGenerator(double_leaved_star, 'double-leaved star'),
   GraphGenerator(nx.path_graph, 'path'),
   # GraphGenerator(perfect_binary_tree, 'perfect binary tree'),
   # GraphGenerator(square_periodic_grid, 'square periodic grid'),
-  GraphGenerator(star_graph, 'star'),
+  # GraphGenerator(star_graph, 'star'),
   # GraphGenerator(multi_column_graph_2, 'multi column graph 2'),
   # GraphGenerator(multi_column_graph_3, 'multi column graph 3'),
   # GraphGenerator(multi_column_graph_4, 'multi column graph 4'),
@@ -146,7 +148,7 @@ def draw(N):
   width, height = 2*np.array([3024, 1964])
   fig = plot.get_figure()
   fig.set_size_inches(*(width/dpi, height/dpi))
-  fig.savefig('plots/trends-dB-20241217-poster.png', dpi=dpi, bbox_inches='tight', bbox_extra_artists=[graph_families_legend])
+  fig.savefig('plots/trends-contracting.png', dpi=dpi, bbox_inches='tight', bbox_extra_artists=[graph_families_legend])
 
 if __name__ == '__main__':
   draw(N)

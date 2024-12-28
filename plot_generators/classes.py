@@ -219,6 +219,40 @@ def conjoined_star_graph_N50(_: int): return conjoined_star_graph(50)
 def star_graph_N50(_: int): return star_graph(50)
 def star_graph_N25(_: int): return star_graph(25)
 
+def contracting_star(n: int, b: int):
+  if n <= b:
+    H_undirected: nx.Graph = nx.star_graph(n-1)
+    H: nx.DiGraph = nx.DiGraph()
+    for (u, v) in H_undirected.edges:
+      H.add_edge(u, v)
+      H.add_edge(v, u)
+    return H
+
+  G = nx.DiGraph()
+  for blade_idx in range(b):
+    blade_size = (n-1) // b if blade_idx != b-1 else (n-1) - blade_idx * ((n-1) // b)
+    
+    B = nx.DiGraph()
+    for i in range(blade_size-1):
+      B.add_edge(i, i+1)
+      B.add_edge(i+1, i)
+
+      for j in range(i+1, blade_size):
+        B.add_edge(i, j)
+
+    G = nx.union(G, B, rename=('', f'B{blade_idx}-'))
+    G.add_edge(f'{n-1}', f'B{blade_idx}-{blade_size-1}')
+    for i in range(blade_size):
+      G.add_edge(f'B{blade_idx}-{i}', f'{n-1}')
+
+  return G
+
+
+def contracting_path(n: int):
+  return contracting_star(n, 2)
+
+def contracting_star_three_blades(n: int):
+  return contracting_star(n, 3)
 
 def directed_general_star_k(n: int, k: int) -> nx.DiGraph:
   m = n-k
@@ -278,9 +312,32 @@ if __name__ == '__main__':
   #       valids[k].add(n)
   
   # print(set.intersection(*valids.values()))
-  n = 49
-  for k in (2,3,4):
-    G = multi_column_graph(n, k)
-    plt.figure()
-    nx.draw(G, nx.kamada_kawai_layout(G))
+  # n = 49
+  # for k in (2,3,4):
+  #   G = multi_column_graph(n, k)
+  #   plt.figure()
+  #   nx.draw(G, nx.kamada_kawai_layout(G))
+  # plt.show()
+
+  import seaborn as sns
+  sns.set_theme(font_scale=2, rc={'text.usetex' : True})
+  sns.set_style("whitegrid", {'axes.grid' : False})
+  
+  n = 9
+  cmap = sns.color_palette('vlag_r')
+  G = contracting_star(n, 2)
+  fig, ax = plt.subplots()
+  ax.axis('off')
+  nx.draw_networkx_nodes(
+    G,
+    ax=ax,
+    pos=nx.shell_layout(G),
+    cmap=cmap,
+  )
+  nx.draw_networkx_labels(
+    G,
+    ax=ax,
+    pos=nx.shell_layout(G),
+  )
+  # nx.draw(G, nx.shell_layout(G), connectionstyle='arc3,rad=.2', with_labels=True)
   plt.show()
