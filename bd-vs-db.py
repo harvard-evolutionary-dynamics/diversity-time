@@ -50,7 +50,7 @@ def onpick(event: PickEvent):
   #   pos = nx.layout.planar_layout(G)
   #   connectionstyle = "arc3,rad=0"
 
-  nx.draw(G, pos=pos, connectionstyle=connectionstyle, arrows=True, node_color='#17becf', width=10, node_size=1000)
+  nx.draw(G, pos=pos, connectionstyle=connectionstyle, arrows=True, node_color='#bcbd22', width=10, node_size=1000)
   plt.savefig(f'plots/a-{time_ns()}.png', transparent=True, dpi=300, bbox_inches='tight')
   # plt.show()
 
